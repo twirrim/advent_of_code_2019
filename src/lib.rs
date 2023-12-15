@@ -1,6 +1,8 @@
 use std::fs;
 use std::io::prelude::*;
 
+pub mod vm;
+
 #[must_use]
 #[inline]
 pub fn read_stdin() -> Vec<String> {

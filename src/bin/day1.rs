@@ -8,7 +8,7 @@ fn calculate_fuel_needed(input: isize) -> isize {
     input / 3 - 2
 }
 
-fn part_one(input: &Vec<isize>) {
+fn part_one(input: &[isize]) {
     let answer = input
         .iter()
         .map(|x| calculate_fuel_needed(*x))
@@ -17,7 +17,7 @@ fn part_one(input: &Vec<isize>) {
     info!("Part one: {}", answer.iter().sum::<isize>());
 }
 
-fn part_two(input: &Vec<isize>) {
+fn part_two(input: &[isize]) {
     let mut total_to_add: isize = 0;
     for module in input {
         let mut fuel_to_add = 0;

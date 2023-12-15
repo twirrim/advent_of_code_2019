@@ -3,6 +3,7 @@ use simple_logger::SimpleLogger;
 
 use advent_of_code_2019::read_file;
 
+#[inline(always)]
 fn calculate_fuel_needed(input: isize) -> isize {
     input / 3 - 2
 }

@@ -6,6 +6,7 @@ pub struct VM {
 }
 
 impl VM {
+    #[must_use]
     pub fn new(input: Vec<usize>) -> Self {
         VM {
             memory: input,
@@ -20,7 +21,6 @@ impl VM {
         }
     }
 
-    // I should add this to the opcode below...
     pub fn set_memory(&mut self, address: usize, value: usize) {
         self.memory[address] = value;
     }
@@ -31,7 +31,7 @@ impl VM {
 
     fn step(&mut self) {
         // Ideally, I think I want to look at dynamic dispatch.  This'll do for now
-        match self.memory[self.pointer] {
+        match self.get_memory(self.pointer) {
             1 => {
                 /*
                 Opcode 1 adds together numbers read from two positions and stores the

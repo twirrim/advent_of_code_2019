@@ -4,7 +4,7 @@ use simple_logger::SimpleLogger;
 use advent_of_code_2019::read_file;
 use advent_of_code_2019::vm::VM;
 
-fn part_two(input: &Vec<usize>) {
+fn part_two(input: &[usize]) {
     /*
     To complete the gravity assist, you need to determine what
     pair of inputs produces the output 19690720.
@@ -19,7 +19,7 @@ fn part_two(input: &Vec<usize>) {
     Find the input noun and verb that cause the program to produce
     the output 19690720. What is 100 * noun + verb?
      */
-    let vm = VM::new(input.clone());
+    let vm = VM::new(input.to_owned());
     let mut finished = false;
     for noun in 0..=99 {
         if !finished {
@@ -28,7 +28,7 @@ fn part_two(input: &Vec<usize>) {
                 test_vm.set_memory(1, noun);
                 test_vm.set_memory(2, verb);
                 test_vm.run();
-                if test_vm.get_memory(0) == 19690720 {
+                if test_vm.get_memory(0) == 19_690_720 {
                     finished = true;
                     let answer = 100 * noun + verb;
                     info!("Part two: {answer}");
@@ -39,7 +39,7 @@ fn part_two(input: &Vec<usize>) {
     }
 }
 
-fn part_one(input: &Vec<usize>) {
+fn part_one(input: &[usize]) {
     /*
     Once you have a working computer, the first step is to
     restore the gravity assist program (your puzzle input)
@@ -49,7 +49,7 @@ fn part_one(input: &Vec<usize>) {
     replace position 2 with the value 2. What value is left
     at position 0 after the program halts?
      */
-    let mut vm = VM::new(input.clone());
+    let mut vm = VM::new(input.to_owned());
     debug! {"{:?}", vm};
     // replace position 1 with the value 12
     vm.set_memory(1, 12);

@@ -1,4 +1,6 @@
 use std::ops::RangeInclusive;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Opcode {
     opcode: isize,
     first_param_mode: isize,
@@ -7,7 +9,25 @@ pub struct Opcode {
 }
 
 impl Opcode {
-    //    fn new(input: isize) -> Self {}
+    fn new(input: isize) -> Self {
+        println!("Building opcode from {}", input);
+        let mut code = input.clone();
+        let third_param_mode = input / 10000;
+        code -= (third_param_mode * 10000);
+        println!("after third {}", code);
+        let second_param_mode = input / 1000;
+        code -= (second_param_mode * 1000);
+        println!("after second {}", code);
+        let first_param_mode = input / 100;
+        code -= (first_param_mode * 100);
+
+        Opcode {
+            opcode: code,
+            first_param_mode,
+            second_param_mode,
+            third_param_mode,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -129,6 +149,23 @@ mod tests {
         for test_case in test_cases.iter_mut() {
             test_case.0.run();
             assert_eq!(test_case.0.memory, test_case.1);
+        }
+    }
+
+    #[test]
+    fn test_opcode_creation() {
+        let mut test_cases = vec![(
+            1002,
+            Opcode {
+                opcode: 2,
+                first_param_mode: 0,
+                second_param_mode: 1,
+                third_param_mode: 0,
+            },
+        )];
+        for test_case in test_cases.iter_mut() {
+            let opcode = Opcode::new(test_case.0);
+            assert_eq!(opcode, test_case.1);
         }
     }
 }

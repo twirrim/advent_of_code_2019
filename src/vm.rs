@@ -1,33 +1,58 @@
 use std::ops::RangeInclusive;
 
+use log::debug;
+
+// I've got a niggling feeling I really want each instruction to be its own type.
+// with various traits associated.
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Opcode {
-    opcode: isize,
+    opcode: OC,
     first_param_mode: isize,
     second_param_mode: isize,
     third_param_mode: isize,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+enum OC {
+    Add,
+    Mul,
+    End,
+}
+
 impl Opcode {
     fn new(input: isize) -> Self {
-        println!("Building opcode from {}", input);
+        debug!("Building opcode from {}", input);
         let mut code = input.clone();
         let third_param_mode = input / 10000;
-        code -= (third_param_mode * 10000);
-        println!("after third {}", code);
-        let second_param_mode = input / 1000;
-        code -= (second_param_mode * 1000);
-        println!("after second {}", code);
-        let first_param_mode = input / 100;
-        code -= (first_param_mode * 100);
+        code -= third_param_mode * 10000;
+        let second_param_mode = code / 1000;
+        code -= second_param_mode * 1000;
+        let first_param_mode = code / 100;
+        code -= first_param_mode * 100;
+
+        let opcode = match code {
+            1 => OC::Add,
+            2 => OC::Mul,
+            99 => OC::End,
+            _ => panic!("Invalid opcode: {code}"),
+        };
 
         Opcode {
-            opcode: code,
+            opcode,
             first_param_mode,
             second_param_mode,
             third_param_mode,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct Instruction {
+    opcode: Opcode,
+    first: Option<isize>,
+    second: Option<isize>,
+    third: Option<isize>,
 }
 
 #[derive(Debug, Clone)]
@@ -40,6 +65,7 @@ pub struct VM {
 impl VM {
     #[must_use]
     pub fn new(input: Vec<isize>) -> Self {
+        debug!("Building VM from: {:?}", input);
         VM {
             memory: input,
             pointer: 0,

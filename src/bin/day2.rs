@@ -4,6 +4,41 @@ use simple_logger::SimpleLogger;
 use advent_of_code_2019::read_file;
 use advent_of_code_2019::vm::VM;
 
+fn part_two(input: &Vec<usize>) {
+    /*
+    To complete the gravity assist, you need to determine what
+    pair of inputs produces the output 19690720.
+
+    The inputs should still be provided to the program by
+    replacing the values at addresses 1 and 2, just like before.
+
+    In this program, the value placed in address 1 is called the
+    noun, and the value placed in address 2 is called the verb.
+    Each of the two input values will be between 0 and 99, inclusive.
+
+    Find the input noun and verb that cause the program to produce
+    the output 19690720. What is 100 * noun + verb?
+     */
+    let vm = VM::new(input.clone());
+    let mut finished = false;
+    for noun in 0..=99 {
+        if !finished {
+            for verb in 0..=99 {
+                let mut test_vm = vm.clone();
+                test_vm.set_memory(1, noun);
+                test_vm.set_memory(2, verb);
+                test_vm.run();
+                if test_vm.get_memory(0) == 19690720 {
+                    finished = true;
+                    let answer = 100 * noun + verb;
+                    info!("Part two: {answer}");
+                    break;
+                }
+            }
+        }
+    }
+}
+
 fn part_one(input: &Vec<usize>) {
     /*
     Once you have a working computer, the first step is to
@@ -40,10 +75,10 @@ fn main() {
     let part_one_start = std::time::Instant::now();
     part_one(&input);
     info!("Part one took: {:?}", part_one_start.elapsed());
-    /*
+
     let part_two_start = std::time::Instant::now();
     part_two(&input);
     info!("Part two took: {:?}", part_two_start.elapsed());
-    */
+
     info!("Overall time take: {:?}", start.elapsed());
 }

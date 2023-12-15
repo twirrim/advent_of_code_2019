@@ -1,13 +1,25 @@
+use std::ops::RangeInclusive;
+pub struct Opcode {
+    opcode: isize,
+    first_param_mode: isize,
+    second_param_mode: isize,
+    third_param_mode: isize,
+}
+
+impl Opcode {
+    //    fn new(input: isize) -> Self {}
+}
+
 #[derive(Debug, Clone)]
 pub struct VM {
-    memory: Vec<usize>,
+    memory: Vec<isize>,
     pointer: usize,
     finished: bool,
 }
 
 impl VM {
     #[must_use]
-    pub fn new(input: Vec<usize>) -> Self {
+    pub fn new(input: Vec<isize>) -> Self {
         VM {
             memory: input,
             pointer: 0,
@@ -21,12 +33,16 @@ impl VM {
         }
     }
 
-    pub fn set_memory(&mut self, address: usize, value: usize) {
+    pub fn set_memory(&mut self, address: usize, value: isize) {
         self.memory[address] = value;
     }
 
-    pub fn get_memory(&mut self, address: usize) -> usize {
+    pub fn get_memory(&mut self, address: usize) -> isize {
         self.memory[address]
+    }
+
+    pub fn get_memory_range(&mut self, address: RangeInclusive<usize>) -> &[isize] {
+        &self.memory[address]
     }
 
     fn step(&mut self) {
@@ -40,10 +56,10 @@ impl VM {
                 positions from which you should read the input values, and the third
                 indicates the position at which the output should be stored.
                  */
-                let instruction = &self.memory[self.pointer + 1..=self.pointer + 3];
-                let a = instruction[0];
-                let b = instruction[1];
-                let c = instruction[2];
+                let instruction = &self.get_memory_range(self.pointer + 1..=self.pointer + 3);
+                let a: usize = instruction[0].try_into().unwrap();
+                let b: usize = instruction[1].try_into().unwrap();
+                let c: usize = instruction[2].try_into().unwrap();
                 self.set_memory(c, self.memory[b] + self.memory[a]);
                 self.pointer += 4;
             }
@@ -53,10 +69,10 @@ impl VM {
                 inputs instead of adding them. Again, the three integers after the
                 opcode indicate where the inputs and outputs are, not their values.
                  */
-                let instruction = &self.memory[self.pointer + 1..=self.pointer + 3];
-                let a = instruction[0];
-                let b = instruction[1];
-                let c = instruction[2];
+                let instruction = &self.get_memory_range(self.pointer + 1..=self.pointer + 3);
+                let a: usize = instruction[0].try_into().unwrap();
+                let b: usize = instruction[1].try_into().unwrap();
+                let c: usize = instruction[2].try_into().unwrap();
                 self.set_memory(c, self.memory[b] * self.memory[a]);
                 self.pointer += 4;
             }

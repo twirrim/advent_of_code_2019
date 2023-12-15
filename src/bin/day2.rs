@@ -4,7 +4,7 @@ use simple_logger::SimpleLogger;
 use advent_of_code_2019::read_file;
 use advent_of_code_2019::vm::VM;
 
-fn part_two(input: &[usize]) {
+fn part_two(input: &[isize]) {
     /*
     To complete the gravity assist, you need to determine what
     pair of inputs produces the output 19690720.
@@ -39,7 +39,7 @@ fn part_two(input: &[usize]) {
     }
 }
 
-fn part_one(input: &[usize]) {
+fn part_one(input: &[isize]) {
     /*
     Once you have a working computer, the first step is to
     restore the gravity assist program (your puzzle input)
@@ -68,8 +68,8 @@ fn main() {
     // Only a single line in the input
     let input = read_file("./input/day2")[0]
         .split(',')
-        .map(|x| x.parse::<usize>().unwrap())
-        .collect::<Vec<usize>>();
+        .map(|x| x.parse::<isize>().unwrap())
+        .collect::<Vec<isize>>();
     info!("Reading and parsing input took: {:?}", start.elapsed());
 
     let part_one_start = std::time::Instant::now();

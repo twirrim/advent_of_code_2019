@@ -17,6 +17,8 @@ pub struct Opcode {
 enum OC {
     Add,
     Mul,
+    Input,
+    Output,
     End,
 }
 
@@ -45,6 +47,8 @@ impl Opcode {
         let opcode = match code {
             1 => OC::Add,
             2 => OC::Mul,
+            3 => OC::Input,
+            4 => OC::Output,
             99 => OC::End,
             _ => panic!("Invalid opcode: {code}"),
         };
@@ -63,15 +67,17 @@ pub struct VM {
     memory: Vec<isize>,
     pointer: usize,
     finished: bool,
+    input: Option<isize>,
 }
 
 impl VM {
     #[must_use]
-    pub fn new(input: Vec<isize>) -> Self {
+    pub fn new(memory: Vec<isize>, input: Option<isize>) -> Self {
         VM {
-            memory: input,
+            memory,
             pointer: 0,
             finished: false,
+            input: input,
         }
     }
 
@@ -152,6 +158,25 @@ impl VM {
                 self.pointer += 4;
             }
             OC::End => self.finished = true,
+            OC::Input => {
+                /*
+                Opcode 3 takes a single integer as input and saves it to the position given
+                by its only parameter. For example, the instruction 3,50 would take an input
+                value and store it at address 50.
+
+                // NOTE: I _suspect_ from the way references to taking an input come across, it
+                _likely_ means this should be interactive
+                 */
+                match self.input {
+                    Some(x) => {
+                        let target = self.get_memory(self.pointer + 1);
+                        self.set_memory(target as usize, x);
+                    }
+                    _ => panic!("Input opcode with no input makes no sense"),
+                }
+                self.pointer += 2;
+            }
+            OC::Output => todo!("{:?}", opcode),
         }
     }
 }
@@ -164,7 +189,7 @@ mod tests {
     fn test_op_nine_nine() {
         // Attempts to prove op code 99 functions correctly
         // if 99 isn't executed correctly, machine won't be in finished state, even if it stops running
-        let mut test_vm = VM::new(vec![99]);
+        let mut test_vm = VM::new(vec![99], None);
         assert_eq!(test_vm.finished, false);
         test_vm.run();
         assert_eq!(test_vm.finished, true);
@@ -174,7 +199,7 @@ mod tests {
     fn test_op_one() {
         // Attempts to prove op code 1 functions correctly
         // Reads 1, says grab values from index 1 & 2 (1, 2), add together (3) and store in 5.
-        let mut test_vm = VM::new(vec![1, 1, 2, 5, 99, 0]);
+        let mut test_vm = VM::new(vec![1, 1, 2, 5, 99, 0], None);
         test_vm.run();
         assert_eq!(test_vm.memory[5], 3);
     }
@@ -183,7 +208,7 @@ mod tests {
     fn test_op_two() {
         // Attempts to prove op code 1 functions correctly
         // Reads 1, says grab values from index 1 & 2 (1, 2), multiply together (2) and store in 5.
-        let mut test_vm = VM::new(vec![2, 1, 2, 5, 99, 0]);
+        let mut test_vm = VM::new(vec![2, 1, 2, 5, 99, 0], None);
         test_vm.run();
         assert_eq!(test_vm.memory[5], 2);
     }
@@ -192,11 +217,14 @@ mod tests {
     #[test]
     fn test_day2_examples() {
         let mut test_cases = vec![
-            (VM::new(vec![1, 0, 0, 0, 99]), vec![2, 0, 0, 0, 99]),
-            (VM::new(vec![2, 3, 0, 3, 99]), vec![2, 3, 0, 6, 99]),
-            (VM::new(vec![2, 4, 4, 5, 99, 0]), vec![2, 4, 4, 5, 99, 9801]),
+            (VM::new(vec![1, 0, 0, 0, 99], None), vec![2, 0, 0, 0, 99]),
+            (VM::new(vec![2, 3, 0, 3, 99], None), vec![2, 3, 0, 6, 99]),
             (
-                VM::new(vec![1, 1, 1, 4, 99, 5, 6, 0, 99]),
+                VM::new(vec![2, 4, 4, 5, 99, 0], None),
+                vec![2, 4, 4, 5, 99, 9801],
+            ),
+            (
+                VM::new(vec![1, 1, 1, 4, 99, 5, 6, 0, 99], None),
                 vec![30, 1, 1, 4, 2, 5, 6, 0, 99],
             ),
         ];

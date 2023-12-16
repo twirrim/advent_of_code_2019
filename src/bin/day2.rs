@@ -19,7 +19,7 @@ fn part_two(input: &[isize]) {
     Find the input noun and verb that cause the program to produce
     the output 19690720. What is 100 * noun + verb?
      */
-    let vm = VM::new(input.to_owned(), None);
+    let vm = VM::new(input.to_owned());
     let mut finished = false;
     for noun in 0..=99 {
         if !finished {
@@ -49,7 +49,7 @@ fn part_one(input: &[isize]) {
     replace position 2 with the value 2. What value is left
     at position 0 after the program halts?
      */
-    let mut vm = VM::new(input.to_owned(), None);
+    let mut vm = VM::new(input.to_owned());
     debug! {"{:?}", vm};
     // replace position 1 with the value 12
     vm.set_memory(1, 12);

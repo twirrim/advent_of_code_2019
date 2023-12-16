@@ -1,13 +1,15 @@
 use std::ops::RangeInclusive;
 
-// use log::debug;
+use crate::get_user_input;
+
+use log::info;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Opcode {
     opcode: OC,
-    first_param_mode: isize,
-    second_param_mode: isize,
-    third_param_mode: isize,
+    first_param_mode: ParameterMode,
+    second_param_mode: ParameterMode,
+    third_param_mode: ParameterMode,
 }
 
 // I've got a niggling feeling I really want each opcode to be its own type.
@@ -20,6 +22,12 @@ enum OC {
     Input,
     Output,
     End,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ParameterMode {
+    Position,
+    Immediate,
 }
 
 impl Opcode {
@@ -37,12 +45,39 @@ impl Opcode {
 
          */
         let mut code = input.clone();
-        let third_param_mode = input / 10000;
-        code -= third_param_mode * 10000;
-        let second_param_mode = code / 1000;
-        code -= second_param_mode * 1000;
-        let first_param_mode = code / 100;
-        code -= first_param_mode * 100;
+
+        let third_param_value = input / 10000;
+        let third_param_mode = match third_param_value {
+            0 => ParameterMode::Position,
+            1 => ParameterMode::Immediate,
+            _ => panic!(
+                "Invalid paramter mode for position three: {}",
+                third_param_value
+            ),
+        };
+        code -= third_param_value * 10000;
+
+        let second_param_value = code / 1000;
+        let second_param_mode = match second_param_value {
+            0 => ParameterMode::Position,
+            1 => ParameterMode::Immediate,
+            _ => panic!(
+                "Invalid paramter mode for position two: {}",
+                second_param_value
+            ),
+        };
+        code -= second_param_value * 1000;
+
+        let first_param_value = code / 100;
+        let first_param_mode = match first_param_value {
+            0 => ParameterMode::Position,
+            1 => ParameterMode::Immediate,
+            _ => panic!(
+                "Invalid paramter mode for position two: {}",
+                first_param_value
+            ),
+        };
+        code -= first_param_value * 100;
 
         let opcode = match code {
             1 => OC::Add,
@@ -67,17 +102,15 @@ pub struct VM {
     memory: Vec<isize>,
     pointer: usize,
     finished: bool,
-    input: Option<isize>,
 }
 
 impl VM {
     #[must_use]
-    pub fn new(memory: Vec<isize>, input: Option<isize>) -> Self {
+    pub fn new(memory: Vec<isize>) -> Self {
         VM {
             memory,
             pointer: 0,
             finished: false,
-            input: input,
         }
     }
 
@@ -100,7 +133,7 @@ impl VM {
     }
 
     fn step(&mut self) {
-        // Ideally, I think I want to look at dynamic dispatch.  This'll do for now
+        // From searching online, dynamic dispatch adds a bunch of undesirable overhead.
         let opcode = Opcode::new(self.get_memory(self.pointer));
         // eww opcode.opcode?
         match opcode.opcode {
@@ -118,15 +151,13 @@ impl VM {
                 // Param mode 0 is position mode, read the value to learn where to look up the final value
                 // Param mode 1 is immediate mode, it's value is the final value
                 let a = match opcode.first_param_mode {
-                    0 => self.get_memory(instruction[0] as usize),
-                    1 => instruction[0],
-                    _ => panic!("Unknown first param mode: {}", opcode.first_param_mode),
+                    ParameterMode::Position => self.get_memory(instruction[0] as usize),
+                    ParameterMode::Immediate => instruction[0],
                 };
 
                 let b = match opcode.second_param_mode {
-                    0 => self.get_memory(instruction[1] as usize),
-                    1 => instruction[1],
-                    _ => panic!("Unknown second param mode: {}", opcode.second_param_mode),
+                    ParameterMode::Position => self.get_memory(instruction[1] as usize),
+                    ParameterMode::Immediate => instruction[1],
                 };
 
                 let c = instruction[2];
@@ -141,15 +172,13 @@ impl VM {
                  */
                 let instruction = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
                 let a = match opcode.first_param_mode {
-                    0 => self.get_memory(instruction[0] as usize),
-                    1 => instruction[0],
-                    _ => panic!("Unknown first param mode: {}", opcode.first_param_mode),
+                    ParameterMode::Position => self.get_memory(instruction[0] as usize),
+                    ParameterMode::Immediate => instruction[0],
                 };
 
                 let b = match opcode.second_param_mode {
-                    0 => self.get_memory(instruction[1] as usize),
-                    1 => instruction[1],
-                    _ => panic!("Unknown second param mode: {}", opcode.second_param_mode),
+                    ParameterMode::Position => self.get_memory(instruction[1] as usize),
+                    ParameterMode::Immediate => instruction[1],
                 };
 
                 let c = instruction[2];
@@ -163,20 +192,32 @@ impl VM {
                 Opcode 3 takes a single integer as input and saves it to the position given
                 by its only parameter. For example, the instruction 3,50 would take an input
                 value and store it at address 50.
+                */
 
-                // NOTE: I _suspect_ from the way references to taking an input come across, it
-                _likely_ means this should be interactive
-                 */
-                match self.input {
-                    Some(x) => {
-                        let target = self.get_memory(self.pointer + 1);
-                        self.set_memory(target as usize, x);
-                    }
-                    _ => panic!("Input opcode with no input makes no sense"),
-                }
+                let input = get_user_input(String::from("Provide Input: "))
+                    .trim()
+                    .parse::<isize>() // I think I ought to do this in the input method
+                    .unwrap(); // Doubt it ever needs to accept non-integer
+
+                let target = self.get_memory(self.pointer + 1);
+                // Parameters that an instruction writes to will never be in immediate mode,
+                // so no need to muck about with parameter mode
+                self.set_memory(target as usize, input);
                 self.pointer += 2;
             }
-            OC::Output => todo!("{:?}", opcode),
+            OC::Output => {
+                /*
+                Opcode 4 outputs the value of its only parameter. For example, the
+                instruction 4,50 would output the value at address 50.
+                */
+                let instruction = self.get_memory(self.pointer + 1);
+                let output = match opcode.first_param_mode {
+                    ParameterMode::Position => self.get_memory(instruction as usize),
+                    ParameterMode::Immediate => instruction,
+                };
+                self.pointer += 2;
+                info!("Output: {output}");
+            }
         }
     }
 }
@@ -189,7 +230,7 @@ mod tests {
     fn test_op_nine_nine() {
         // Attempts to prove op code 99 functions correctly
         // if 99 isn't executed correctly, machine won't be in finished state, even if it stops running
-        let mut test_vm = VM::new(vec![99], None);
+        let mut test_vm = VM::new(vec![99]);
         assert_eq!(test_vm.finished, false);
         test_vm.run();
         assert_eq!(test_vm.finished, true);
@@ -199,16 +240,16 @@ mod tests {
     fn test_op_one() {
         // Attempts to prove op code 1 functions correctly
         // Reads 1, says grab values from index 1 & 2 (1, 2), add together (3) and store in 5.
-        let mut test_vm = VM::new(vec![1, 1, 2, 5, 99, 0], None);
+        let mut test_vm = VM::new(vec![1, 1, 2, 5, 99, 0]);
         test_vm.run();
         assert_eq!(test_vm.memory[5], 3);
     }
 
     #[test]
     fn test_op_two() {
-        // Attempts to prove op code 1 functions correctly
+        // Attempts to prove op code 2 functions correctly
         // Reads 1, says grab values from index 1 & 2 (1, 2), multiply together (2) and store in 5.
-        let mut test_vm = VM::new(vec![2, 1, 2, 5, 99, 0], None);
+        let mut test_vm = VM::new(vec![2, 1, 2, 5, 99, 0]);
         test_vm.run();
         assert_eq!(test_vm.memory[5], 2);
     }
@@ -217,14 +258,11 @@ mod tests {
     #[test]
     fn test_day2_examples() {
         let mut test_cases = vec![
-            (VM::new(vec![1, 0, 0, 0, 99], None), vec![2, 0, 0, 0, 99]),
-            (VM::new(vec![2, 3, 0, 3, 99], None), vec![2, 3, 0, 6, 99]),
+            (VM::new(vec![1, 0, 0, 0, 99]), vec![2, 0, 0, 0, 99]),
+            (VM::new(vec![2, 3, 0, 3, 99]), vec![2, 3, 0, 6, 99]),
+            (VM::new(vec![2, 4, 4, 5, 99, 0]), vec![2, 4, 4, 5, 99, 9801]),
             (
-                VM::new(vec![2, 4, 4, 5, 99, 0], None),
-                vec![2, 4, 4, 5, 99, 9801],
-            ),
-            (
-                VM::new(vec![1, 1, 1, 4, 99, 5, 6, 0, 99], None),
+                VM::new(vec![1, 1, 1, 4, 99, 5, 6, 0, 99]),
                 vec![30, 1, 1, 4, 2, 5, 6, 0, 99],
             ),
         ];
@@ -241,9 +279,9 @@ mod tests {
             1002,
             Opcode {
                 opcode: OC::Mul,
-                first_param_mode: 0,
-                second_param_mode: 1,
-                third_param_mode: 0,
+                first_param_mode: ParameterMode::Position,
+                second_param_mode: ParameterMode::Immediate,
+                third_param_mode: ParameterMode::Position,
             },
         )];
         for test_case in test_cases.iter_mut() {

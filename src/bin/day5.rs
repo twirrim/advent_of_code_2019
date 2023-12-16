@@ -7,7 +7,7 @@ use advent_of_code_2019::vm::VM;
 fn part_two(input: &[isize]) {}
 
 fn part_one(input: &[isize]) {
-    let mut vm = VM::new(input.to_owned(), Some(1));
+    let mut vm = VM::new(input.to_owned());
     vm.run();
 }
 

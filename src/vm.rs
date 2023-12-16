@@ -21,6 +21,10 @@ enum OC {
     Mul,
     Input,
     Output,
+    JumpIfTrue,
+    JumpIfFalse,
+    LessThan,
+    Equals,
     End,
 }
 
@@ -75,6 +79,10 @@ impl Opcode {
             2 => OC::Mul,
             3 => OC::Input,
             4 => OC::Output,
+            5 => OC::JumpIfTrue,
+            6 => OC::JumpIfFalse,
+            7 => OC::LessThan,
+            8 => OC::Equals,
             99 => OC::End,
             _ => panic!("Invalid opcode: {code}"),
         };
@@ -138,20 +146,20 @@ impl VM {
                 indicates the position at which the output should be stored.
                  */
 
-                let instruction = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
+                let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
                 // Param mode 0 is position mode, read the value to learn where to look up the final value
                 // Param mode 1 is immediate mode, it's value is the final value
                 let a = match opcode.first_param_mode {
-                    ParameterMode::Position => self.get_memory(instruction[0] as usize),
-                    ParameterMode::Immediate => instruction[0],
+                    ParameterMode::Position => self.get_memory(parameter[0] as usize),
+                    ParameterMode::Immediate => parameter[0],
                 };
 
                 let b = match opcode.second_param_mode {
-                    ParameterMode::Position => self.get_memory(instruction[1] as usize),
-                    ParameterMode::Immediate => instruction[1],
+                    ParameterMode::Position => self.get_memory(parameter[1] as usize),
+                    ParameterMode::Immediate => parameter[1],
                 };
 
-                let c = instruction[2];
+                let c = parameter[2];
                 self.set_memory(c as usize, b + a);
                 self.pointer += 4;
             }
@@ -161,18 +169,18 @@ impl VM {
                 inputs instead of adding them. Again, the three integers after the
                 opcode indicate where the inputs and outputs are, not their values.
                  */
-                let instruction = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
+                let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
                 let a = match opcode.first_param_mode {
-                    ParameterMode::Position => self.get_memory(instruction[0] as usize),
-                    ParameterMode::Immediate => instruction[0],
+                    ParameterMode::Position => self.get_memory(parameter[0] as usize),
+                    ParameterMode::Immediate => parameter[0],
                 };
 
                 let b = match opcode.second_param_mode {
-                    ParameterMode::Position => self.get_memory(instruction[1] as usize),
-                    ParameterMode::Immediate => instruction[1],
+                    ParameterMode::Position => self.get_memory(parameter[1] as usize),
+                    ParameterMode::Immediate => parameter[1],
                 };
 
-                let c = instruction[2];
+                let c = parameter[2];
 
                 self.set_memory(c as usize, b * a);
                 self.pointer += 4;
@@ -201,13 +209,103 @@ impl VM {
                 Opcode 4 outputs the value of its only parameter. For example, the
                 instruction 4,50 would output the value at address 50.
                 */
-                let instruction = self.get_memory(self.pointer + 1);
+                let parameter = self.get_memory(self.pointer + 1);
                 let output = match opcode.first_param_mode {
-                    ParameterMode::Position => self.get_memory(instruction as usize),
-                    ParameterMode::Immediate => instruction,
+                    ParameterMode::Position => self.get_memory(parameter as usize),
+                    ParameterMode::Immediate => parameter,
                 };
                 self.pointer += 2;
                 info!("Output: {output}");
+            }
+            OC::JumpIfTrue => {
+                /*
+                Opcode 5 is jump-if-true: if the first parameter is non-zero, it
+                sets the instruction pointer to the value from the second parameter.
+                Otherwise, it does nothing.
+                */
+
+                let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 2);
+                if parameter[0] != 0 {
+                    let target = match opcode.second_param_mode {
+                        ParameterMode::Position => self.get_memory(parameter[1] as usize),
+                        ParameterMode::Immediate => parameter[1],
+                    };
+                    self.pointer = target as usize;
+                } else {
+                    self.pointer += 3;
+                }
+            }
+            OC::JumpIfFalse => {
+                /*
+                Opcode 6 is jump-if-false: if the first parameter is zero, it sets the
+                instruction pointer to the value from the second parameter. Otherwise, it does nothing.
+                */
+
+                let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 2);
+                if parameter[0] == 0 {
+                    let target = match opcode.second_param_mode {
+                        ParameterMode::Position => self.get_memory(parameter[1] as usize),
+                        ParameterMode::Immediate => parameter[1],
+                    };
+                    self.pointer = target as usize;
+                } else {
+                    self.pointer += 3;
+                }
+            }
+            OC::LessThan => {
+                /*
+                Opcode 7 is less than: if the first parameter is less than the second parameter,
+                it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
+                */
+
+                let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
+                let first_parameter_value = match opcode.first_param_mode {
+                    ParameterMode::Position => self.get_memory(parameter[0] as usize),
+                    ParameterMode::Immediate => parameter[0],
+                };
+                let second_parameter_value = match opcode.second_param_mode {
+                    ParameterMode::Position => self.get_memory(parameter[1] as usize),
+                    ParameterMode::Immediate => parameter[1],
+                };
+                let third_parameter_value = match opcode.third_param_mode {
+                    ParameterMode::Position => self.get_memory(parameter[2] as usize),
+                    ParameterMode::Immediate => parameter[2],
+                };
+                let store_value = if first_parameter_value < second_parameter_value {
+                    1
+                } else {
+                    0
+                };
+
+                self.set_memory(third_parameter_value as usize, store_value);
+                self.pointer += 4;
+            }
+            OC::Equals => {
+                /*
+                 Opcode 8 is equals: if the first parameter is equal to the second parameter,
+                 it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
+                */
+                let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
+                let first_parameter_value = match opcode.first_param_mode {
+                    ParameterMode::Position => self.get_memory(parameter[0] as usize),
+                    ParameterMode::Immediate => parameter[0],
+                };
+                let second_parameter_value = match opcode.second_param_mode {
+                    ParameterMode::Position => self.get_memory(parameter[1] as usize),
+                    ParameterMode::Immediate => parameter[1],
+                };
+                let third_parameter_value = match opcode.third_param_mode {
+                    ParameterMode::Position => self.get_memory(parameter[2] as usize),
+                    ParameterMode::Immediate => parameter[2],
+                };
+                let store_value = if first_parameter_value == second_parameter_value {
+                    1
+                } else {
+                    0
+                };
+
+                self.set_memory(third_parameter_value as usize, store_value);
+                self.pointer += 4;
             }
         }
     }

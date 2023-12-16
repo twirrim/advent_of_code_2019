@@ -44,16 +44,13 @@ impl Opcode {
         Any missing modes are 0.
 
          */
-        let mut code = input.clone();
+        let mut code = input;
 
         let third_param_value = input / 10000;
         let third_param_mode = match third_param_value {
             0 => ParameterMode::Position,
             1 => ParameterMode::Immediate,
-            _ => panic!(
-                "Invalid paramter mode for position three: {}",
-                third_param_value
-            ),
+            _ => panic!("Invalid paramter mode for position three: {third_param_value}",),
         };
         code -= third_param_value * 10000;
 
@@ -61,10 +58,7 @@ impl Opcode {
         let second_param_mode = match second_param_value {
             0 => ParameterMode::Position,
             1 => ParameterMode::Immediate,
-            _ => panic!(
-                "Invalid paramter mode for position two: {}",
-                second_param_value
-            ),
+            _ => panic!("Invalid paramter mode for position two: {second_param_value}"),
         };
         code -= second_param_value * 1000;
 
@@ -72,10 +66,7 @@ impl Opcode {
         let first_param_mode = match first_param_value {
             0 => ParameterMode::Position,
             1 => ParameterMode::Immediate,
-            _ => panic!(
-                "Invalid paramter mode for position two: {}",
-                first_param_value
-            ),
+            _ => panic!("Invalid paramter mode for position two: {first_param_value}",),
         };
         code -= first_param_value * 100;
 
@@ -194,7 +185,7 @@ impl VM {
                 value and store it at address 50.
                 */
 
-                let input = get_user_input(String::from("Provide Input: "))
+                let input = get_user_input("Provide Input: ")
                     .trim()
                     .parse::<isize>() // I think I ought to do this in the input method
                     .unwrap(); // Doubt it ever needs to accept non-integer

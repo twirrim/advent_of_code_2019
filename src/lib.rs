@@ -2,8 +2,6 @@ use std::fs;
 use std::io;
 use std::io::prelude::*;
 
-use log::debug;
-
 pub mod vm;
 
 #[must_use]
@@ -30,7 +28,7 @@ pub fn read_file(source: &str) -> Vec<String> {
 /// # Panics
 ///
 /// Will panic if it has problems reading from stdin
-pub fn get_user_input(query: String) -> String {
+pub fn get_user_input(query: &str) -> String {
     let mut input = String::new();
     println!("{query}");
     io::stdin().read_line(&mut input).unwrap();

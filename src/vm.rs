@@ -1,9 +1,6 @@
 use std::ops::RangeInclusive;
 
-use log::debug;
-
-// I've got a niggling feeling I really want each instruction to be its own type.
-// with various traits associated.
+// use log::debug;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Opcode {
@@ -12,6 +9,9 @@ pub struct Opcode {
     second_param_mode: isize,
     third_param_mode: isize,
 }
+
+// I've got a niggling feeling I really want each opcode to be its own type.
+// with various traits associated?
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 enum OC {
@@ -22,7 +22,18 @@ enum OC {
 
 impl Opcode {
     fn new(input: isize) -> Self {
-        debug!("Building opcode from {}", input);
+        /*
+        Parameter modes are stored in the same value as the instruction's opcode.
+        The opcode is a two-digit number based only on the ones and tens digit of
+        the value, that is, the opcode is the rightmost two digits of the first
+        value in an instruction. Parameter modes are single digits, one per
+        parameter, read right-to-left from the opcode: the first parameter's mode
+        is in the hundreds digit, the second parameter's mode is in the thousands digit,
+        the third parameter's mode is in the ten-thousands digit,and so on.
+
+        Any missing modes are 0.
+
+         */
         let mut code = input.clone();
         let third_param_mode = input / 10000;
         code -= third_param_mode * 10000;
@@ -48,14 +59,6 @@ impl Opcode {
 }
 
 #[derive(Debug, Clone)]
-pub struct Instruction {
-    opcode: Opcode,
-    first: Option<isize>,
-    second: Option<isize>,
-    third: Option<isize>,
-}
-
-#[derive(Debug, Clone)]
 pub struct VM {
     memory: Vec<isize>,
     pointer: usize,
@@ -65,7 +68,6 @@ pub struct VM {
 impl VM {
     #[must_use]
     pub fn new(input: Vec<isize>) -> Self {
-        debug!("Building VM from: {:?}", input);
         VM {
             memory: input,
             pointer: 0,
@@ -83,18 +85,21 @@ impl VM {
         self.memory[address] = value;
     }
 
-    pub fn get_memory(&mut self, address: usize) -> isize {
+    pub fn get_memory(&self, address: usize) -> isize {
         self.memory[address]
     }
 
-    pub fn get_memory_range(&mut self, address: RangeInclusive<usize>) -> &[isize] {
+    pub fn get_memory_range(&self, address: RangeInclusive<usize>) -> &[isize] {
         &self.memory[address]
     }
 
     fn step(&mut self) {
         // Ideally, I think I want to look at dynamic dispatch.  This'll do for now
-        match self.get_memory(self.pointer) {
-            1 => {
+        let opcode = Opcode::new(self.get_memory(self.pointer));
+        // eww opcode.opcode?
+        match opcode.opcode {
+            // I dislike all of this being here like this, makes it hard to read, and I really dislike the duplication around param modes.
+            OC::Add => {
                 /*
                 Opcode 1 adds together numbers read from two positions and stores the
                 result in a third position. The three integers immediately after the
@@ -102,28 +107,51 @@ impl VM {
                 positions from which you should read the input values, and the third
                 indicates the position at which the output should be stored.
                  */
-                let instruction = &self.get_memory_range(self.pointer + 1..=self.pointer + 3);
-                let a: usize = instruction[0].try_into().unwrap();
-                let b: usize = instruction[1].try_into().unwrap();
-                let c: usize = instruction[2].try_into().unwrap();
-                self.set_memory(c, self.memory[b] + self.memory[a]);
+
+                let instruction = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
+                // Param mode 0 is position mode, read the value to learn where to look up the final value
+                // Param mode 1 is immediate mode, it's value is the final value
+                let a = match opcode.first_param_mode {
+                    0 => self.get_memory(instruction[0] as usize),
+                    1 => instruction[0],
+                    _ => panic!("Unknown first param mode: {}", opcode.first_param_mode),
+                };
+
+                let b = match opcode.second_param_mode {
+                    0 => self.get_memory(instruction[1] as usize),
+                    1 => instruction[1],
+                    _ => panic!("Unknown second param mode: {}", opcode.second_param_mode),
+                };
+
+                let c = instruction[2];
+                self.set_memory(c as usize, b + a);
                 self.pointer += 4;
             }
-            2 => {
+            OC::Mul => {
                 /*
                 Opcode 2 works exactly like opcode 1, except it multiplies the two
                 inputs instead of adding them. Again, the three integers after the
                 opcode indicate where the inputs and outputs are, not their values.
                  */
-                let instruction = &self.get_memory_range(self.pointer + 1..=self.pointer + 3);
-                let a: usize = instruction[0].try_into().unwrap();
-                let b: usize = instruction[1].try_into().unwrap();
-                let c: usize = instruction[2].try_into().unwrap();
-                self.set_memory(c, self.memory[b] * self.memory[a]);
+                let instruction = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
+                let a = match opcode.first_param_mode {
+                    0 => self.get_memory(instruction[0] as usize),
+                    1 => instruction[0],
+                    _ => panic!("Unknown first param mode: {}", opcode.first_param_mode),
+                };
+
+                let b = match opcode.second_param_mode {
+                    0 => self.get_memory(instruction[1] as usize),
+                    1 => instruction[1],
+                    _ => panic!("Unknown second param mode: {}", opcode.second_param_mode),
+                };
+
+                let c = instruction[2];
+
+                self.set_memory(c as usize, b * a);
                 self.pointer += 4;
             }
-            99 => self.finished = true,
-            _ => panic!("{} not implemented yet!", self.memory[self.pointer]),
+            OC::End => self.finished = true,
         }
     }
 }
@@ -173,6 +201,7 @@ mod tests {
             ),
         ];
         for test_case in test_cases.iter_mut() {
+            println!("Test Case: {:?}", test_case);
             test_case.0.run();
             assert_eq!(test_case.0.memory, test_case.1);
         }
@@ -183,7 +212,7 @@ mod tests {
         let mut test_cases = vec![(
             1002,
             Opcode {
-                opcode: 2,
+                opcode: OC::Mul,
                 first_param_mode: 0,
                 second_param_mode: 1,
                 third_param_mode: 0,

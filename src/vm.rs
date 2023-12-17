@@ -332,6 +332,23 @@ mod tests {
         assert_eq!(test_vm.memory[5], 2);
     }
 
+    #[test]
+    fn test_op_five() {
+        // five = JumpIfTrue. if first param is non-zero, should set pointer to second param
+
+        // parameter mode 0
+        let mut test_vm = VM::new(vec![5, 1, 3, 99]);
+        test_vm.run();
+        println!("{:?}", test_vm);
+        assert_eq!(test_vm.pointer, 99);
+
+        // parameter mode 1
+        let mut test_vm = VM::new(vec![105, 1, 3, 99]);
+        test_vm.run();
+        println!("{:?}", test_vm);
+        assert_eq!(test_vm.pointer, 3);
+    }
+
     // Now some specific example programs from day 2
     #[test]
     fn test_day2_examples() {

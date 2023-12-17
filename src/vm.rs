@@ -346,22 +346,15 @@ mod tests {
     }
 
     // Now some specific example programs from day 2
-    #[test]
-    fn test_day2_examples() {
-        let mut test_cases = vec![
-            (VM::new(vec![1, 0, 0, 0, 99]), vec![2, 0, 0, 0, 99]),
-            (VM::new(vec![2, 3, 0, 3, 99]), vec![2, 3, 0, 6, 99]),
-            (VM::new(vec![2, 4, 4, 5, 99, 0]), vec![2, 4, 4, 5, 99, 9801]),
-            (
-                VM::new(vec![1, 1, 1, 4, 99, 5, 6, 0, 99]),
-                vec![30, 1, 1, 4, 2, 5, 6, 0, 99],
-            ),
-        ];
-        for test_case in test_cases.iter_mut() {
-            println!("Test Case: {:?}", test_case);
-            test_case.0.run();
-            assert_eq!(test_case.0.memory, test_case.1);
-        }
+    #[rstest]
+    #[case(vec![1, 0, 0, 0, 99], vec![2, 0, 0, 0, 99])]
+    #[case(vec![2, 3, 0, 3, 99], vec![2, 3, 0, 6, 99])]
+    #[case(vec![2, 4, 4, 5, 99, 0], vec![2, 4, 4, 5, 99, 9801])]
+    #[case(vec![1, 1, 1, 4, 99, 5, 6, 0, 99], vec![30, 1, 1, 4, 2, 5, 6, 0, 99])]
+    fn test_day2_examples(#[case] input: Vec<isize>, #[case] expected: Vec<isize>) {
+        let mut vm = VM::new(input);
+        vm.run();
+        assert_eq!(vm.memory, expected);
     }
 
     #[test]

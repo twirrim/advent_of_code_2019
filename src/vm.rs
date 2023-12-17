@@ -174,7 +174,7 @@ impl VM {
                  */
 
                 let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
-                println!("parameter: {:?}", parameter);
+                debug_println!("OC::Add parameter: {:?}", parameter);
                 let a = self.get_param_value(&opcode.first_param_mode, parameter[0]);
                 let b = self.get_param_value(&opcode.second_param_mode, parameter[1]);
                 let c = parameter[2];
@@ -189,6 +189,7 @@ impl VM {
                 opcode indicate where the inputs and outputs are, not their values.
                  */
                 let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
+                debug_println!("OC::Mul parameter: {:?}", parameter);
                 let a = self.get_param_value(&opcode.first_param_mode, parameter[0]);
                 let b = self.get_param_value(&opcode.second_param_mode, parameter[1]);
 

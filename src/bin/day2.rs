@@ -1,8 +1,8 @@
-use log::{debug, info};
+use log::info;
 use simple_logger::SimpleLogger;
 
-use advent_of_code_2019::read_file;
 use advent_of_code_2019::vm::VM;
+use advent_of_code_2019::{debug_println, read_file};
 
 fn part_two(input: &[isize]) {
     /*
@@ -50,13 +50,13 @@ fn part_one(input: &[isize]) {
     at position 0 after the program halts?
      */
     let mut vm = VM::new(input.to_owned());
-    debug! {"{:?}", vm};
+    debug_println!("{:?}", vm);
     // replace position 1 with the value 12
     vm.set_memory(1, 12);
-    debug! {"{:?}", vm};
+    debug_println!("{:?}", vm);
     // replace position 2 with the value 2
     vm.set_memory(2, 2);
-    debug! {"{:?}", vm};
+    debug_println!("{:?}", vm);
     vm.run();
     info!("Part 1 answer: {}", vm.get_memory(0));
 }

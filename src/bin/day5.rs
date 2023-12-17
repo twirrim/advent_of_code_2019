@@ -1,13 +1,14 @@
-use log::{debug, info};
+use log::info;
 use simple_logger::SimpleLogger;
 
-use advent_of_code_2019::read_file;
 use advent_of_code_2019::vm::VM;
+use advent_of_code_2019::{debug_println, read_file};
 
 fn part_two(input: &[isize]) {}
 
 fn part_one(input: &[isize]) {
     let mut vm = VM::new(input.to_owned());
+    debug_println!("{:?}", vm);
     vm.run();
 }
 

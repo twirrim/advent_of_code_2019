@@ -4,6 +4,12 @@ use std::io::prelude::*;
 
 pub mod vm;
 
+// from https://www.reddit.com/r/rust/comments/skmpnr/output_text_to_console_in_debug_mode_only/hvluai2/
+#[macro_export]
+macro_rules! debug_println {
+    ($($arg:tt)*) => (if ::std::cfg!(debug_assertions) { ::std::println!($($arg)*); })
+}
+
 #[must_use]
 #[inline]
 pub fn read_stdin() -> Vec<String> {

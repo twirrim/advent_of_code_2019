@@ -11,7 +11,7 @@ I imagine in the real world, that could be a major problem.  For AoC I imagine i
 
 use std::ops::RangeInclusive;
 
-use crate::get_user_input;
+use crate::{debug_println, get_user_input};
 
 use log::info;
 use num_traits::int::PrimInt;
@@ -115,6 +115,7 @@ pub struct VM {
 impl VM {
     #[must_use]
     pub fn new(memory: Vec<isize>) -> Self {
+        debug_println!("Creating VM from: {:?}", memory);
         VM {
             memory,
             pointer: 0,
@@ -145,7 +146,7 @@ impl VM {
         // Param mode 1 is immediate mode, it's value is the final value
         match param_mode {
             ParameterMode::Position => self.get_memory(location),
-            ParameterMode::Immediate => location as isize,
+            ParameterMode::Immediate => location,
         }
     }
 
@@ -173,10 +174,11 @@ impl VM {
                  */
 
                 let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
+                println!("parameter: {:?}", parameter);
                 let a = self.get_param_value(&opcode.first_param_mode, parameter[0]);
                 let b = self.get_param_value(&opcode.second_param_mode, parameter[1]);
                 let c = self.get_param_value(&opcode.third_param_mode, parameter[2]);
-
+                println!("a, b, c: {a}, {b}, {c}");
                 self.set_memory(c, b + a);
                 self.increment_pointer(4);
             }
@@ -264,11 +266,7 @@ impl VM {
                     self.get_param_value(&opcode.second_param_mode, parameter[1]);
                 let third_parameter_value =
                     self.get_param_value(&opcode.third_param_mode, parameter[2]);
-                let store_value = if first_parameter_value < second_parameter_value {
-                    1
-                } else {
-                    0
-                };
+                let store_value = isize::from(first_parameter_value < second_parameter_value);
 
                 self.set_memory(third_parameter_value, store_value);
                 self.increment_pointer(4);
@@ -285,11 +283,7 @@ impl VM {
                     self.get_param_value(&opcode.second_param_mode, parameter[1]);
                 let third_parameter_value =
                     self.get_param_value(&opcode.third_param_mode, parameter[2]);
-                let store_value = if first_parameter_value == second_parameter_value {
-                    1
-                } else {
-                    0
-                };
+                let store_value = isize::from(first_parameter_value == second_parameter_value);
 
                 self.set_memory(third_parameter_value, store_value);
                 self.increment_pointer(4);

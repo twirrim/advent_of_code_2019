@@ -4,3 +4,19 @@ Update OC::Add and OC::Mul tests to account for immediate and position mode
 Not sure this is an issue, but maybe see if there is a way to make RangeInclusive work with PrimInt? Currently vm.get_memory_range only accepts usize ranges?
 So far the only thing it's being used for is to get the parameters and that's a fixed range off the current pointer, all usize.
 Ugly thought: worst case scenario I'd shift to `get_memory_range(start, end)` style input
+
+Can I make this pattern more generic?
+```
+                let first_parameter_value =
+                    self.get_param_value(&opcode.first_param_mode, parameter[0]);
+                let second_parameter_value =
+                    self.get_param_value(&opcode.second_param_mode, parameter[1]);
+                let third_parameter_value =
+                    self.get_param_value(&opcode.third_param_mode, parameter[2]);
+```
+Different commands have different numbers of paramters.  So far suggestion is max of three, based on the parameter mode description section.
+Can I make a method that would take in opcode and the paramter iterable, and spit out the requisit number of values?
+A la:
+```
+let parameter_values = self.get_param_values(&opcode, parameters);
+```

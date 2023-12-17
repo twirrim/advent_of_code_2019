@@ -455,13 +455,26 @@ mod tests {
     #[case(vec![3,3,1108,-1,8,3,4,3,99], 2, 0)]
     #[case(vec![3,3,1108,-1,8,3,4,3,99], 8, 1)]
     #[case(vec![3,3,1108,-1,8,3,4,3,99], 9, 0)]
+    fn test_day5_input_is_eight(
+        #[case] memory: Vec<isize>,
+        #[case] input: isize,
+        #[case] expected: isize,
+    ) {
+        let mut vm = VM::new(memory);
+        vm.push_input(input);
+        vm.run();
+        let output = vm.pop_output();
+        assert_eq!(output.unwrap(), expected);
+    }
+
+    #[rstest]
     #[case(vec![3,9,7,9,10,9,4,9,99,-1,8], 2, 1)]
     #[case(vec![3,9,7,9,10,9,4,9,99,-1,8], 8, 0)]
-    #[case(vec![3,9,7,9,10,9,4,9,99,-1,8], 9, 1)]
+    #[case(vec![3,9,7,9,10,9,4,9,99,-1,8], 9, 0)]
     #[case(vec![3,3,1107,-1,8,3,4,3,99], 2, 1)]
     #[case(vec![3,3,1107,-1,8,3,4,3,99], 8, 0)]
-    #[case(vec![3,3,1107,-1,8,3,4,3,99], 9, 1)]
-    fn test_day5_input_is_eight(
+    #[case(vec![3,3,1107,-1,8,3,4,3,99], 9, 0)]
+    fn test_day5_input_less_than_eight(
         #[case] memory: Vec<isize>,
         #[case] input: isize,
         #[case] expected: isize,

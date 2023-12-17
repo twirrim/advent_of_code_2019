@@ -177,8 +177,8 @@ impl VM {
                 println!("parameter: {:?}", parameter);
                 let a = self.get_param_value(&opcode.first_param_mode, parameter[0]);
                 let b = self.get_param_value(&opcode.second_param_mode, parameter[1]);
-                let c = self.get_param_value(&opcode.third_param_mode, parameter[2]);
-                println!("a, b, c: {a}, {b}, {c}");
+                let c = parameter[2];
+
                 self.set_memory(c, b + a);
                 self.increment_pointer(4);
             }
@@ -191,7 +191,8 @@ impl VM {
                 let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
                 let a = self.get_param_value(&opcode.first_param_mode, parameter[0]);
                 let b = self.get_param_value(&opcode.second_param_mode, parameter[1]);
-                let c = self.get_param_value(&opcode.third_param_mode, parameter[2]);
+
+                let c = parameter[2];
 
                 self.set_memory(c, b * a);
                 self.increment_pointer(4);

@@ -4,10 +4,18 @@ use simple_logger::SimpleLogger;
 use advent_of_code_2019::vm::VM;
 use advent_of_code_2019::{debug_println, read_file};
 
-fn part_two(input: &[isize]) {}
+fn part_two(input: &[isize]) {
+    // For part 2, the input value should be 5
+    let mut vm = VM::new(input.to_owned());
+    vm.push_input(5);
+    debug_println!("{:?}", vm);
+    vm.run();
+}
 
 fn part_one(input: &[isize]) {
+    // For part 2, the input value should be 1
     let mut vm = VM::new(input.to_owned());
+    vm.push_input(1);
     debug_println!("{:?}", vm);
     vm.run();
 }
@@ -24,7 +32,7 @@ fn main() {
     info!("Reading and parsing input took: {:?}", start.elapsed());
 
     let part_one_start = std::time::Instant::now();
-    part_one(&input);
+    // part_one(&input);
     info!("Part one took: {:?}", part_one_start.elapsed());
 
     let part_two_start = std::time::Instant::now();

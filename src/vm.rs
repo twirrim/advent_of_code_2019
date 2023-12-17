@@ -230,7 +230,6 @@ impl VM {
                 sets the instruction pointer to the value from the second parameter.
                 Otherwise, it does nothing.
                 */
-
                 let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 2);
                 if parameter[0] != 0 {
                     let target = self.get_param_value(&opcode.first_param_mode, parameter[1]);
@@ -303,6 +302,7 @@ impl VM {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::*;
 
     #[test]
     fn test_op_nine_nine() {
@@ -332,21 +332,17 @@ mod tests {
         assert_eq!(test_vm.memory[5], 2);
     }
 
-    #[test]
-    fn test_op_five() {
+    // rstest gets me those parametrised tests I love in pytest
+    #[rstest]
+    #[case(vec![5, 1, 2, 4, 5, 99], 2)] // mode 0, true
+    #[case(vec![5, 0, 3, 4, 5, 99], 3)] // mode 0, false
+    #[case(vec![105, 1, 3, 4, 5, 99], 3)] // mode 1, true
+    #[case(vec![105, 0, 3, 4, 5, 99], 3)] // mode 1, false
+    fn test_op_five(#[case] input: Vec<isize>, #[case] expected: usize) {
         // five = JumpIfTrue. if first param is non-zero, should set pointer to second param
-
-        // parameter mode 0
-        let mut test_vm = VM::new(vec![5, 1, 3, 99]);
-        test_vm.run();
-        println!("{:?}", test_vm);
-        assert_eq!(test_vm.pointer, 99);
-
-        // parameter mode 1
-        let mut test_vm = VM::new(vec![105, 1, 3, 99]);
-        test_vm.run();
-        println!("{:?}", test_vm);
-        assert_eq!(test_vm.pointer, 3);
+        let mut test_vm = VM::new(input);
+        test_vm.step();
+        assert_eq!(test_vm.pointer, expected);
     }
 
     // Now some specific example programs from day 2

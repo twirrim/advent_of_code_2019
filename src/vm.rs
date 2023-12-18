@@ -128,8 +128,6 @@ impl VM {
         // Memory beyond the initial program starts with the value 0 and can be read or written like any other memory.
         // (It is invalid to try to access memory at a negative address, though.)
 
-        // Re^:  I'm tempted to see if I can catch out-of-range memory accesses, and fill with zeroes only when necessary.
-        // That pays a performance penalty on memory access, while keeping memory consumption as low as possible.
         VM {
             memory,
             pointer: 0,
@@ -175,32 +173,47 @@ impl VM {
     }
 
     pub fn set_memory<T: PrimInt + Display>(&mut self, address: T, value: isize) {
+        let target = address.to_usize().unwrap();
+        if target > self.memory.len() - 1 {
+            debug_println!("Expanding memory to {target}");
+            self.memory.resize(target, 0);
+        }
         debug_println!("Setting {address} to {value}");
-        self.memory[address.to_usize().unwrap()] = value;
+        self.memory[target] = value;
     }
 
-    pub fn get_memory<T: PrimInt + Display>(&self, address: T) -> isize {
-        debug_println!("Getting from memory at {address}");
-        let value = self.memory[address.to_usize().unwrap()];
+    pub fn get_memory<T: PrimInt + Display>(&mut self, address: T) -> isize {
+        let target = address.to_usize().unwrap();
+        if target > self.memory.len() - 1 {
+            debug_println!("Expanding memory to {target}");
+            self.memory.resize(target, 0);
+        }
+        debug_println!("Getting from memory at {target}");
+        let value = self.memory[target].clone();
         debug_println!("Got value: {value}");
         value
     }
 
-    pub fn get_memory_range(&self, address: RangeInclusive<usize>) -> &[isize] {
+    pub fn get_memory_range(&mut self, address: RangeInclusive<usize>) -> Vec<isize> {
+        if address.end() > &(self.memory.len() - 1) {
+            debug_println!("Expanding memory to {}", address.end());
+            self.memory.resize(*address.end(), 0);
+        }
+
         debug_println!("Getting memory range {:?}", address);
         let values = &self.memory[address];
         debug_println!("Got value: {:?}", values);
-        values
+        values.to_vec()
     }
 
-    fn get_param_value(&self, param_mode: &ParameterMode, location: isize) -> isize {
+    fn get_param_value(&mut self, param_mode: &ParameterMode, location: &isize) -> isize {
         // Param mode 0 is position mode, read the value to learn where to look up the final value
         // Param mode 1 is immediate mode, it's value is the final value
         match param_mode {
-            ParameterMode::Position => self.get_memory(location),
+            ParameterMode::Position => self.get_memory(*location),
             ParameterMode::Immediate => {
                 debug_println!("Immediate mode, returning: {location}");
-                location
+                *location
             }
             ParameterMode::Relative => {
                 let relative = location + self.relative_base;
@@ -236,8 +249,8 @@ impl VM {
 
                 let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
                 debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
-                let a = self.get_param_value(&opcode.first_param_mode, parameter[0]);
-                let b = self.get_param_value(&opcode.second_param_mode, parameter[1]);
+                let a = self.get_param_value(&opcode.first_param_mode, &parameter[0]);
+                let b = self.get_param_value(&opcode.second_param_mode, &parameter[1]);
                 let c = parameter[2];
                 debug_println!("Setting location {c} to {}", b + a);
                 self.set_memory(c, b + a);
@@ -251,8 +264,8 @@ impl VM {
                  */
                 let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
                 debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
-                let a = self.get_param_value(&opcode.first_param_mode, parameter[0]);
-                let b = self.get_param_value(&opcode.second_param_mode, parameter[1]);
+                let a = self.get_param_value(&opcode.first_param_mode, &parameter[0]);
+                let b = self.get_param_value(&opcode.second_param_mode, &parameter[1]);
 
                 let c = parameter[2];
 
@@ -289,7 +302,7 @@ impl VM {
                 */
                 let parameter = self.get_memory(self.pointer + 1);
                 debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
-                let output = self.get_param_value(&opcode.first_param_mode, parameter);
+                let output = self.get_param_value(&opcode.first_param_mode, &parameter);
                 self.push_output(output);
                 self.increment_pointer(2);
             }
@@ -302,10 +315,10 @@ impl VM {
                 let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 2);
                 debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
                 let first_parameter_value =
-                    self.get_param_value(&opcode.first_param_mode, parameter[0]);
+                    self.get_param_value(&opcode.first_param_mode, &parameter[0]);
                 if first_parameter_value != 0 {
                     debug_println!("{first_parameter_value} != 0");
-                    let target = self.get_param_value(&opcode.second_param_mode, parameter[1]);
+                    let target = self.get_param_value(&opcode.second_param_mode, &parameter[1]);
                     self.set_pointer(target);
                 } else {
                     self.increment_pointer(3);
@@ -321,12 +334,12 @@ impl VM {
                 debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
 
                 let first_parameter_value =
-                    self.get_param_value(&opcode.first_param_mode, parameter[0]);
+                    self.get_param_value(&opcode.first_param_mode, &parameter[0]);
 
                 if first_parameter_value == 0 {
                     debug_println!("{} == 0", first_parameter_value);
                     let second_parameter_value =
-                        self.get_param_value(&opcode.second_param_mode, parameter[1]);
+                        self.get_param_value(&opcode.second_param_mode, &parameter[1]);
                     self.set_pointer(second_parameter_value);
                 } else {
                     debug_println!("Pointer before increment {}", self.pointer);
@@ -343,9 +356,9 @@ impl VM {
                 let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
                 debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
                 let first_parameter_value =
-                    self.get_param_value(&opcode.first_param_mode, parameter[0]);
+                    self.get_param_value(&opcode.first_param_mode, &parameter[0]);
                 let second_parameter_value =
-                    self.get_param_value(&opcode.second_param_mode, parameter[1]);
+                    self.get_param_value(&opcode.second_param_mode, &parameter[1]);
                 let third_parameter_value = parameter[2];
                 let store_value = if first_parameter_value < second_parameter_value {
                     debug_println!("{first_parameter_value} < {second_parameter_value}");
@@ -366,9 +379,9 @@ impl VM {
                 let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
                 debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
                 let first_parameter_value =
-                    self.get_param_value(&opcode.first_param_mode, parameter[0]);
+                    self.get_param_value(&opcode.first_param_mode, &parameter[0]);
                 let second_parameter_value =
-                    self.get_param_value(&opcode.second_param_mode, parameter[1]);
+                    self.get_param_value(&opcode.second_param_mode, &parameter[1]);
                 let third_parameter_value = parameter[2];
                 let store_value = if first_parameter_value == second_parameter_value {
                     debug_println!("{first_parameter_value} == {second_parameter_value}");
@@ -388,7 +401,7 @@ impl VM {
                  */
                 let parameter = self.get_memory(self.pointer + 1);
                 debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
-                let offset_increment = self.get_param_value(&opcode.first_param_mode, parameter);
+                let offset_increment = self.get_param_value(&opcode.first_param_mode, &parameter);
                 self.increment_relative_offset(offset_increment);
                 self.increment_pointer(2);
             }

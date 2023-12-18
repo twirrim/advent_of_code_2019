@@ -34,6 +34,7 @@ enum OC {
     JumpIfFalse,
     LessThan,
     Equals,
+    RelativeBaseOffset,
     End,
 }
 
@@ -41,6 +42,7 @@ enum OC {
 enum ParameterMode {
     Position,
     Immediate,
+    Relative,
 }
 
 impl Opcode {
@@ -63,6 +65,7 @@ impl Opcode {
         let third_param_mode = match third_param_value {
             0 => ParameterMode::Position,
             1 => ParameterMode::Immediate,
+            2 => ParameterMode::Relative,
             _ => panic!("Invalid paramter mode for position three: {third_param_value}",),
         };
         code -= third_param_value * 10000;
@@ -71,6 +74,7 @@ impl Opcode {
         let second_param_mode = match second_param_value {
             0 => ParameterMode::Position,
             1 => ParameterMode::Immediate,
+            2 => ParameterMode::Relative,
             _ => panic!("Invalid paramter mode for position two: {second_param_value}"),
         };
         code -= second_param_value * 1000;
@@ -79,6 +83,7 @@ impl Opcode {
         let first_param_mode = match first_param_value {
             0 => ParameterMode::Position,
             1 => ParameterMode::Immediate,
+            2 => ParameterMode::Relative,
             _ => panic!("Invalid paramter mode for position two: {first_param_value}",),
         };
         code -= first_param_value * 100;
@@ -92,6 +97,7 @@ impl Opcode {
             6 => OC::JumpIfFalse,
             7 => OC::LessThan,
             8 => OC::Equals,
+            9 => OC::RelativeBaseOffset,
             99 => OC::End,
             _ => panic!("Invalid opcode: {code}"),
         };
@@ -110,6 +116,7 @@ pub struct VM {
     memory: Vec<isize>,
     pointer: usize,
     finished: bool,
+    relative_base: isize,
     input: Vec<isize>,
     output: Vec<isize>, // getting uncomfortable with this.. feels like something subject to major change later
 }
@@ -122,6 +129,7 @@ impl VM {
             memory,
             pointer: 0,
             finished: false,
+            relative_base: 0,
             input: vec![],
             output: vec![],
         }
@@ -132,6 +140,11 @@ impl VM {
             debug_println!("{:?}", self.memory);
             self.step();
         }
+    }
+
+    pub fn increment_relative_offset<T: PrimInt + Display>(&mut self, input: T) {
+        debug_println!("Incrementing relative_base by {input}");
+        self.relative_base += input.to_isize().unwrap();
     }
 
     pub fn push_input<T: PrimInt + Display>(&mut self, input: T) {
@@ -183,6 +196,11 @@ impl VM {
             ParameterMode::Immediate => {
                 debug_println!("Immediate mode, returning: {location}");
                 location
+            }
+            ParameterMode::Relative => {
+                let relative = location + self.relative_base;
+                debug_println!("Relative base mode, returning {relative}");
+                relative
             }
         }
     }
@@ -358,6 +376,16 @@ impl VM {
                 self.set_memory(third_parameter_value, store_value);
                 self.increment_pointer(4);
             }
+            OC::RelativeBaseOffset => {
+                /*
+                Opcode 9 adjusts the relative base by the value of its only parameter.
+                The relative base increases (or decreases, if the value is negative) by the value of the parameter.
+                 */
+                let parameter = self.get_memory(self.pointer + 1);
+                debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
+                let offset_increment = self.get_param_value(&opcode.first_param_mode, parameter);
+                self.increment_relative_offset(offset_increment);
+            }
         }
     }
 }
@@ -399,7 +427,7 @@ mod tests {
     #[rstest]
     #[case(vec![5, 1, 2, 4, 5, 99], 2)] // mode 0, true
     #[case(vec![5, 0, 3, 4, 5, 99], 4)] // mode 0, false
-    #[case(vec![105, 1, 6, 4, 5, 99], 6)] // mode 1, true
+    #[case(vec![105, 1, 3, 4, 5, 99], 4)] // mode 1, true
     #[case(vec![105, 0, 6, 4, 5, 99], 3)] // mode 1, false
     fn test_op_five(#[case] input: Vec<isize>, #[case] expected: usize) {
         // five = JumpIfTrue. if first param is non-zero, should set pointer to second param
@@ -442,6 +470,16 @@ mod tests {
         let mut test_vm = VM::new(input);
         test_vm.step();
         assert_eq!(test_vm.memory[4], expected); // bad way to test!
+    }
+
+    #[rstest]
+    #[case(vec![9, 0], 9)]
+    #[case(vec![109, 1], 1)]
+    fn test_op_nine(#[case] input: Vec<isize>, #[case] expected: isize) {
+        // nine updates relative base by provided increment
+        let mut test_vm = VM::new(input);
+        test_vm.step();
+        assert_eq!(test_vm.relative_base, expected); // bad way to test!
     }
 
     // Now some specific example programs from day 2

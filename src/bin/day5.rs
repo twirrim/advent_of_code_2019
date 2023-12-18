@@ -10,6 +10,7 @@ fn part_two(input: &[isize]) {
     vm.push_input(5);
     debug_println!("{:?}", vm);
     vm.run();
+    info!("{:?}", vm.pop_output().unwrap());
 }
 
 fn part_one(input: &[isize]) {
@@ -18,6 +19,7 @@ fn part_one(input: &[isize]) {
     vm.push_input(1);
     debug_println!("{:?}", vm);
     vm.run();
+    info!("{:?}", vm.pop_output().unwrap());
 }
 
 fn main() {
@@ -32,7 +34,7 @@ fn main() {
     info!("Reading and parsing input took: {:?}", start.elapsed());
 
     let part_one_start = std::time::Instant::now();
-    // part_one(&input);
+    part_one(&input);
     info!("Part one took: {:?}", part_one_start.elapsed());
 
     let part_two_start = std::time::Instant::now();

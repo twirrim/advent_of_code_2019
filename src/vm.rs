@@ -278,9 +278,11 @@ impl VM {
                 */
                 let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 2);
                 debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
-                if parameter[0] != 0 {
-                    debug_println!("{} != 0", parameter[0]);
-                    let target = self.get_param_value(&opcode.first_param_mode, parameter[1]);
+                let first_parameter_value =
+                    self.get_param_value(&opcode.first_param_mode, parameter[0]);
+                if first_parameter_value != 0 {
+                    debug_println!("{first_parameter_value} != 0");
+                    let target = self.get_param_value(&opcode.second_param_mode, parameter[1]);
                     self.set_pointer(target);
                 } else {
                     self.increment_pointer(3);
@@ -294,12 +296,19 @@ impl VM {
 
                 let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 2);
                 debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
-                if parameter[0] == 0 {
-                    debug_println!("{} == 0", parameter[0]);
-                    let target = self.get_param_value(&opcode.first_param_mode, parameter[1]);
-                    self.set_pointer(target);
+
+                let first_parameter_value =
+                    self.get_param_value(&opcode.first_param_mode, parameter[0]);
+
+                if first_parameter_value == 0 {
+                    debug_println!("{} == 0", first_parameter_value);
+                    let second_parameter_value =
+                        self.get_param_value(&opcode.second_param_mode, parameter[1]);
+                    self.set_pointer(second_parameter_value);
                 } else {
+                    debug_println!("Pointer before increment {}", self.pointer);
                     self.increment_pointer(3);
+                    debug_println!("Pointer after increment {}", self.pointer);
                 }
             }
             OC::LessThan => {
@@ -389,9 +398,9 @@ mod tests {
     // rstest gets me those parametrised tests I love in pytest
     #[rstest]
     #[case(vec![5, 1, 2, 4, 5, 99], 2)] // mode 0, true
-    #[case(vec![5, 0, 3, 4, 5, 99], 3)] // mode 0, false
-    #[case(vec![105, 1, 3, 4, 5, 99], 3)] // mode 1, true
-    #[case(vec![105, 0, 3, 4, 5, 99], 3)] // mode 1, false
+    #[case(vec![5, 0, 3, 4, 5, 99], 4)] // mode 0, false
+    #[case(vec![105, 1, 6, 4, 5, 99], 6)] // mode 1, true
+    #[case(vec![105, 0, 6, 4, 5, 99], 3)] // mode 1, false
     fn test_op_five(#[case] input: Vec<isize>, #[case] expected: usize) {
         // five = JumpIfTrue. if first param is non-zero, should set pointer to second param
         let mut test_vm = VM::new(input);
@@ -400,10 +409,10 @@ mod tests {
     }
 
     #[rstest]
-    #[case(vec![6, 1, 2, 4, 5, 99], 3)] // mode 0, false
-    #[case(vec![6, 0, 3, 4, 5, 99], 4)] // mode 0, true
-    #[case(vec![106, 1, 3, 4, 5, 99], 3)] // mode 1, false
-    #[case(vec![106, 0, 3, 4, 5, 99], 3)] // mode 1, true
+    #[case(vec![6, 6, 2, 4, 5, 99, 0], 2)] // mode 0, false
+    #[case(vec![6, 6, 3, 4, 5, 99, 1], 3)] // mode 0, true
+    #[case(vec![106, 0, 3, 4, 5, 99], 4)] // mode 1, false
+    #[case(vec![106, 1, 3, 4, 5, 99], 3)] // mode 1, true
     fn test_op_six(#[case] input: Vec<isize>, #[case] expected: usize) {
         // five = JumpIfFalse. if first param is non-zero, should set pointer to second param
         let mut test_vm = VM::new(input);
@@ -485,6 +494,54 @@ mod tests {
         let output = vm.pop_output();
         assert_eq!(output.unwrap(), expected);
     }
+
+    #[rstest]
+    #[case(vec![3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9], 0, 0)]
+    #[case(vec![3,3,1105,-1,9,1101,0,0,12,4,12,99,1], 0, 0)]
+    #[case(vec![3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9], 1, 1)]
+    #[case(vec![3,3,1105,-1,9,1101,0,0,12,4,12,99,1], isize::MAX, 1)]
+    fn test_day5_input_is_zero(
+        #[case] memory: Vec<isize>,
+        #[case] input: isize,
+        #[case] expected: isize,
+    ) {
+        let mut vm = VM::new(memory);
+        vm.push_input(input);
+        vm.run();
+        let output = vm.pop_output();
+        assert_eq!(output.unwrap(), expected);
+    }
+
+    /*
+    #[rstest]
+    #[case(vec![3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,
+        1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,
+        999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99], 0, 999)]
+    #[case(vec![3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,
+        1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,
+        999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99], 8, 1000)]
+    #[case(vec![3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,
+        1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,
+        999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99], 9, 1001)]
+    #[case(vec![3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,
+        1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,
+        999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99], isize::MAX, 1001)]
+    fn test_day5_input_relates_to_eight(
+        #[case] memory: Vec<isize>,
+        #[case] input: isize,
+        #[case] expected: isize,
+    ) {
+        // example program uses an input instruction to ask for a single number.
+        // The program will then output 999 if the input value is below 8, output
+        // 1000 if the input value is equal to 8, or output 1001 if the input value
+        // is greater than 8.
+        let mut vm = VM::new(memory);
+        vm.push_input(input);
+        vm.run();
+        let output = vm.pop_output();
+        assert_eq!(output.unwrap(), expected);
+    }
+    */
 
     #[test]
     fn test_opcode_creation() {

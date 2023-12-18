@@ -1,11 +1,10 @@
-Can I modify OC::Input and OC::Output so that it would be possible to write tests for them?
-Update OC::Add and OC::Mul tests to account for immediate and position mode
-
-Not sure this is an issue, but maybe see if there is a way to make RangeInclusive work with PrimInt? Currently vm.get_memory_range only accepts usize ranges?
+* Consider alternatives for the Opcode struct approach.  I'm not keen on certain aspects of it.
+* Update OC::Add and OC::Mul tests to account for immediate and position mode
+* Not sure this is an issue, but maybe see if there is a way to make RangeInclusive work with PrimInt? Currently vm.get_memory_range only accepts usize ranges?
 So far the only thing it's being used for is to get the parameters and that's a fixed range off the current pointer, all usize.
-Ugly thought: worst case scenario I'd shift to `get_memory_range(start, end)` style input
+Ugly thought: worst case scenario I'd shift to `get_memory_range(start, end)` style input.  Is there value in that anyway?
 
-Can I make this pattern more generic?
+* Can I make this pattern more generic?
 ```
                 let first_parameter_value =
                     self.get_param_value(&opcode.first_param_mode, parameter[0]);

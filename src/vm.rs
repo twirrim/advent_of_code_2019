@@ -13,7 +13,6 @@ use std::{fmt::Display, ops::RangeInclusive};
 
 use crate::debug_println;
 
-use log::info;
 use num_traits::int::PrimInt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -125,6 +124,12 @@ impl VM {
     #[must_use]
     pub fn new(memory: Vec<isize>) -> Self {
         debug_println!("Creating VM from: {:?}", memory);
+        // The computer's available memory should be much larger than the initial program.
+        // Memory beyond the initial program starts with the value 0 and can be read or written like any other memory.
+        // (It is invalid to try to access memory at a negative address, though.)
+
+        // Re^:  I'm tempted to see if I can catch out-of-range memory accesses, and fill with zeroes only when necessary.
+        // That pays a performance penalty on memory access, while keeping memory consumption as low as possible.
         VM {
             memory,
             pointer: 0,
@@ -385,6 +390,7 @@ impl VM {
                 debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
                 let offset_increment = self.get_param_value(&opcode.first_param_mode, parameter);
                 self.increment_relative_offset(offset_increment);
+                self.increment_pointer(2);
             }
         }
     }
@@ -550,7 +556,6 @@ mod tests {
         assert_eq!(output.unwrap(), expected);
     }
 
-    /*
     #[rstest]
     #[case(vec![3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,
         1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,
@@ -579,7 +584,35 @@ mod tests {
         let output = vm.pop_output();
         assert_eq!(output.unwrap(), expected);
     }
-    */
+
+    #[test]
+    fn test_day9_example_one() {
+        let input = vec![
+            109, 1, 204, -1, 1001, 100, 1, 100, 1008, 100, 16, 101, 1006, 101, 0, 99,
+        ];
+        let mut vm = VM::new(input.clone());
+        vm.run();
+        assert_eq!(vec![1], input);
+    }
+
+    #[test]
+    fn test_day9_example_two() {
+        let mut vm = VM::new(vec![1102, 34915192, 34915192, 7, 4, 7, 99, 0]);
+        vm.run();
+        let output = vm.pop_output().unwrap();
+        // Should be 16 digits long.. divide by 1000000000000000.
+        // If it's between 1 and 9, it's a 16 digit number.
+        debug_println!("{}", output / 1000000000000000);
+        assert!((1..10).contains(&(output / 1000000000000000)));
+    }
+
+    #[test]
+    fn test_day9_example_three() {
+        let mut vm = VM::new(vec![104, 1125899906842624, 99]);
+        vm.run();
+        let output = vm.pop_output().unwrap();
+        assert_eq!(output, 1125899906842624);
+    }
 
     #[test]
     fn test_opcode_creation() {

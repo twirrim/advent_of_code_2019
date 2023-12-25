@@ -18,9 +18,6 @@ use num_traits::int::PrimInt;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Opcode {
     opcode: OC,
-    first_param_mode: ParameterMode,
-    second_param_mode: ParameterMode,
-    third_param_mode: ParameterMode,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -37,76 +34,20 @@ enum OC {
     End,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum ParameterMode {
-    Position,
-    Immediate,
-    Relative,
-}
-
-impl Opcode {
-    fn new(input: isize) -> Self {
-        /*
-        Parameter modes are stored in the same value as the instruction's opcode.
-        The opcode is a two-digit number based only on the ones and tens digit of
-        the value, that is, the opcode is the rightmost two digits of the first
-        value in an instruction. Parameter modes are single digits, one per
-        parameter, read right-to-left from the opcode: the first parameter's mode
-        is in the hundreds digit, the second parameter's mode is in the thousands digit,
-        the third parameter's mode is in the ten-thousands digit,and so on.
-
-        Any missing modes are 0.
-
-         */
-        let mut code = input;
-
-        let third_param_value = input / 10000;
-        let third_param_mode = match third_param_value {
-            0 => ParameterMode::Position,
-            1 => ParameterMode::Immediate,
-            2 => ParameterMode::Relative,
-            _ => panic!("Invalid paramter mode for position three: {third_param_value}",),
-        };
-        code -= third_param_value * 10000;
-
-        let second_param_value = code / 1000;
-        let second_param_mode = match second_param_value {
-            0 => ParameterMode::Position,
-            1 => ParameterMode::Immediate,
-            2 => ParameterMode::Relative,
-            _ => panic!("Invalid paramter mode for position two: {second_param_value}"),
-        };
-        code -= second_param_value * 1000;
-
-        let first_param_value = code / 100;
-        let first_param_mode = match first_param_value {
-            0 => ParameterMode::Position,
-            1 => ParameterMode::Immediate,
-            2 => ParameterMode::Relative,
-            _ => panic!("Invalid paramter mode for position two: {first_param_value}",),
-        };
-        code -= first_param_value * 100;
-
-        let opcode = match code {
-            1 => OC::Add,
-            2 => OC::Mul,
-            3 => OC::Input,
-            4 => OC::Output,
-            5 => OC::JumpIfTrue,
-            6 => OC::JumpIfFalse,
-            7 => OC::LessThan,
-            8 => OC::Equals,
-            9 => OC::RelativeBaseOffset,
-            99 => OC::End,
-            _ => panic!("Invalid opcode: {code}"),
-        };
-
-        Opcode {
-            opcode,
-            first_param_mode,
-            second_param_mode,
-            third_param_mode,
-        }
+fn decode_opcode<T: PrimInt + Display>(input: T) -> OC {
+    let last_two = input.to_usize().unwrap() % 100;
+    match last_two {
+        1 => OC::Add,
+        2 => OC::Mul,
+        3 => OC::Input,
+        4 => OC::Output,
+        5 => OC::JumpIfTrue,
+        6 => OC::JumpIfFalse,
+        7 => OC::LessThan,
+        8 => OC::Equals,
+        9 => OC::RelativeBaseOffset,
+        99 => OC::End,
+        _ => panic!("Invalid opcode: {}", last_two),
     }
 }
 
@@ -264,9 +205,9 @@ impl VM {
 
     fn step(&mut self) {
         // From searching online, dynamic dispatch adds a bunch of undesirable overhead.
-        let opcode = Opcode::new(self.get_memory(self.pointer));
+        let opcode = decode_opcode(self.get_memory(self.pointer));
         // eww opcode.opcode?
-        match opcode.opcode {
+        match opcode {
             OC::Add => {
                 /*
                 Opcode 1 adds together numbers read from two positions and stores the
@@ -295,7 +236,7 @@ impl VM {
                 self.increment_pointer(4);
             }
             OC::End => {
-                debug_println!("{:?}. Ending program", opcode.opcode);
+                debug_println!("{:?}. Ending program", opcode);
                 self.finished = true;
             }
             OC::Input => {
@@ -628,17 +569,9 @@ mod tests {
 
     #[test]
     fn test_opcode_creation() {
-        let mut test_cases = vec![(
-            1002,
-            Opcode {
-                opcode: OC::Mul,
-                first_param_mode: ParameterMode::Position,
-                second_param_mode: ParameterMode::Immediate,
-                third_param_mode: ParameterMode::Position,
-            },
-        )];
+        let mut test_cases = vec![(1002, OC::Mul)];
         for test_case in test_cases.iter_mut() {
-            let opcode = Opcode::new(test_case.0);
+            let opcode = decode_opcode(test_case.0);
             assert_eq!(opcode, test_case.1);
         }
     }

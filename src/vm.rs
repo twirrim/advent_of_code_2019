@@ -172,11 +172,57 @@ impl VM {
         self.output.push(value);
     }
 
+    // I'm going to draw from https://www.reddit.com/r/adventofcode/comments/e8aw9j/2019_day_9_part_1_how_to_fix_203_error/faajho3/
+    // I've messed up something here and I like the way that approach shapes the code.
+    // This will help me clean up and likely remove the Opcode Enum, or re-think it entirely.
+    fn get_param<T: PrimInt + Display>(&mut self, parameter_number: T) -> isize {
+        debug_println!("Getting from {parameter_number}");
+        let mode =
+            self.get_memory(self.pointer) / (10 * 10.pow(parameter_number.to_u32().unwrap()));
+        let val = self.get_memory(self.pointer + parameter_number.to_usize().unwrap());
+        match mode % 10 {
+            0 => {
+                let result = self.get_memory(val);
+                debug_println!("Imode 0, Returning: {result}");
+                result
+            }
+            1 => {
+                debug_println!("Imode 1, Returning {val}");
+                val
+            }
+            2 => {
+                let result = self.get_memory(val + self.relative_base);
+                debug_println!("Imode 2, Returning {result}");
+                result
+            }
+            _ => panic!("Invalid parameter mode: {}", mode % 10),
+        }
+    }
+
+    fn set_param<T: PrimInt + Display>(&mut self, parameter_number: T, set_to: T) {
+        debug_println!("Getting from {parameter_number}");
+        let mode =
+            self.get_memory(self.pointer) / (10 * 10.pow(parameter_number.to_u32().unwrap()));
+        let val = self.get_memory(self.pointer + parameter_number.to_usize().unwrap());
+        match mode % 10 {
+            0 => {
+                debug_println!("Imode 0, Setting: {val} to {set_to}");
+                self.set_memory(val, set_to.to_isize().unwrap())
+            }
+            2 => {
+                let target = val + self.relative_base;
+                debug_println!("Imode 2, Setting {target} to {set_to}");
+                self.set_memory(target, set_to.to_isize().unwrap())
+            }
+            _ => panic!("Invalid parameter mode: {}", mode % 10),
+        }
+    }
+
     pub fn set_memory<T: PrimInt + Display>(&mut self, address: T, value: isize) {
         let target = address.to_usize().unwrap();
         if target > self.memory.len() - 1 {
             debug_println!("Expanding memory to {target}");
-            self.memory.resize(target, 0);
+            self.memory.resize(target + 1, 0);
         }
         debug_println!("Setting {address} to {value}");
         self.memory[target] = value;
@@ -186,11 +232,11 @@ impl VM {
         let target = address.to_usize().unwrap();
         if target > self.memory.len() - 1 {
             debug_println!("Expanding memory to {target}");
-            self.memory.resize(target, 0);
+            self.memory.resize(target + 1, 0);
         }
-        debug_println!("Getting from memory at {target}");
+        // debug_println!("Getting from memory at {target}");
         let value = self.memory[target].clone();
-        debug_println!("Got value: {value}");
+        // debug_println!("Got value: {value}");
         value
     }
 
@@ -204,23 +250,6 @@ impl VM {
         let values = &self.memory[address];
         debug_println!("Got value: {:?}", values);
         values.to_vec()
-    }
-
-    fn get_param_value(&mut self, param_mode: &ParameterMode, location: &isize) -> isize {
-        // Param mode 0 is position mode, read the value to learn where to look up the final value
-        // Param mode 1 is immediate mode, it's value is the final value
-        match param_mode {
-            ParameterMode::Position => self.get_memory(*location),
-            ParameterMode::Immediate => {
-                debug_println!("Immediate mode, returning: {location}");
-                *location
-            }
-            ParameterMode::Relative => {
-                let relative = location + self.relative_base;
-                debug_println!("Relative base mode, returning {relative}");
-                relative
-            }
-        }
     }
 
     fn set_pointer<T: PrimInt + Display>(&mut self, value: T) {
@@ -247,13 +276,10 @@ impl VM {
                 indicates the position at which the output should be stored.
                  */
 
-                let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
-                debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
-                let a = self.get_param_value(&opcode.first_param_mode, &parameter[0]);
-                let b = self.get_param_value(&opcode.second_param_mode, &parameter[1]);
-                let c = parameter[2];
-                debug_println!("Setting location {c} to {}", b + a);
-                self.set_memory(c, b + a);
+                let a = self.get_param(1);
+                let b = self.get_param(2);
+                debug_println!("{:?}: {a} + {b}", &opcode);
+                self.set_param(3, a + b);
                 self.increment_pointer(4);
             }
             OC::Mul => {
@@ -262,15 +288,10 @@ impl VM {
                 inputs instead of adding them. Again, the three integers after the
                 opcode indicate where the inputs and outputs are, not their values.
                  */
-                let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
-                debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
-                let a = self.get_param_value(&opcode.first_param_mode, &parameter[0]);
-                let b = self.get_param_value(&opcode.second_param_mode, &parameter[1]);
-
-                let c = parameter[2];
-
-                debug_println!("Setting location {c} to {}", b * a);
-                self.set_memory(c, b * a);
+                let a = self.get_param(1);
+                let b = self.get_param(2);
+                debug_println!("{:?}: {a} * {b}", &opcode);
+                self.set_param(3, a * b);
                 self.increment_pointer(4);
             }
             OC::End => {
@@ -285,14 +306,8 @@ impl VM {
                 */
 
                 let input = self.pop_input();
-                let target = self.get_memory(self.pointer + 1);
-                // Parameters that an instruction writes to will never be in immediate mode,
-                // so no need to muck about with parameter mode
-                debug_println!(
-                    "{:?}, Got input {input}, writing to location {target}",
-                    opcode
-                );
-                self.set_memory(target, input);
+                debug_println!("{:?}, Got input {input}", opcode);
+                self.set_param(1, input);
                 self.increment_pointer(2);
             }
             OC::Output => {
@@ -300,10 +315,10 @@ impl VM {
                 Opcode 4 outputs the value of its only parameter. For example, the
                 instruction 4,50 would output the value at address 50.
                 */
-                let parameter = self.get_memory(self.pointer + 1);
-                debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
-                let output = self.get_param_value(&opcode.first_param_mode, &parameter);
+                let output = self.get_param(1);
+                debug_println!("{:?}: output: {:?}", &opcode, output);
                 self.push_output(output);
+                debug_println!("Output Queue: {:?}", self.output);
                 self.increment_pointer(2);
             }
             OC::JumpIfTrue => {
@@ -312,15 +327,15 @@ impl VM {
                 sets the instruction pointer to the value from the second parameter.
                 Otherwise, it does nothing.
                 */
-                let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 2);
-                debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
-                let first_parameter_value =
-                    self.get_param_value(&opcode.first_param_mode, &parameter[0]);
-                if first_parameter_value != 0 {
-                    debug_println!("{first_parameter_value} != 0");
-                    let target = self.get_param_value(&opcode.second_param_mode, &parameter[1]);
+                let a = self.get_param(1);
+                debug_println!("{:?}", &opcode);
+
+                if a != 0 {
+                    let target = self.get_param(2);
+                    debug_println!("{a} != 0, jumping to {target}");
                     self.set_pointer(target);
                 } else {
+                    debug_println!("{a} == 0.  Not jumping");
                     self.increment_pointer(3);
                 }
             }
@@ -330,21 +345,16 @@ impl VM {
                 instruction pointer to the value from the second parameter. Otherwise, it does nothing.
                 */
 
-                let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 2);
-                debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
+                let a = self.get_param(1);
+                debug_println!("{:?}", &opcode);
 
-                let first_parameter_value =
-                    self.get_param_value(&opcode.first_param_mode, &parameter[0]);
-
-                if first_parameter_value == 0 {
-                    debug_println!("{} == 0", first_parameter_value);
-                    let second_parameter_value =
-                        self.get_param_value(&opcode.second_param_mode, &parameter[1]);
-                    self.set_pointer(second_parameter_value);
+                if a == 0 {
+                    let target = self.get_param(2);
+                    debug_println!("{a} == 0, jumping to {target}");
+                    self.set_pointer(target);
                 } else {
-                    debug_println!("Pointer before increment {}", self.pointer);
+                    debug_println!("{a} != 0.  Not jumping");
                     self.increment_pointer(3);
-                    debug_println!("Pointer after increment {}", self.pointer);
                 }
             }
             OC::LessThan => {
@@ -353,22 +363,17 @@ impl VM {
                 it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
                 */
 
-                let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
-                debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
-                let first_parameter_value =
-                    self.get_param_value(&opcode.first_param_mode, &parameter[0]);
-                let second_parameter_value =
-                    self.get_param_value(&opcode.second_param_mode, &parameter[1]);
-                let third_parameter_value = parameter[2];
-                let store_value = if first_parameter_value < second_parameter_value {
-                    debug_println!("{first_parameter_value} < {second_parameter_value}");
-                    1
-                } else {
-                    debug_println!("{first_parameter_value} >= {second_parameter_value}");
-                    0
-                };
+                let a = self.get_param(1);
+                let b = self.get_param(2);
+                debug_println!("{:?}: {a} < {b} ?", &opcode);
 
-                self.set_memory(third_parameter_value, store_value);
+                if a < b {
+                    debug_println!("Yes!");
+                    self.set_param(3, 1);
+                } else {
+                    debug_println!("No!");
+                    self.set_param(3, 0);
+                }
                 self.increment_pointer(4);
             }
             OC::Equals => {
@@ -376,22 +381,17 @@ impl VM {
                  Opcode 8 is equals: if the first parameter is equal to the second parameter,
                  it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
                 */
-                let parameter = self.get_memory_range(self.pointer + 1..=self.pointer + 3);
-                debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
-                let first_parameter_value =
-                    self.get_param_value(&opcode.first_param_mode, &parameter[0]);
-                let second_parameter_value =
-                    self.get_param_value(&opcode.second_param_mode, &parameter[1]);
-                let third_parameter_value = parameter[2];
-                let store_value = if first_parameter_value == second_parameter_value {
-                    debug_println!("{first_parameter_value} == {second_parameter_value}");
-                    1
-                } else {
-                    debug_println!("{first_parameter_value} != {second_parameter_value}");
-                    0
-                };
 
-                self.set_memory(third_parameter_value, store_value);
+                let a = self.get_param(1);
+                let b = self.get_param(2);
+                debug_println!("{:?}: {a} == {b} ?", &opcode);
+                if a == b {
+                    debug_println!("Yes!");
+                    self.set_param(3, 1);
+                } else {
+                    debug_println!("No!");
+                    self.set_param(3, 0);
+                }
                 self.increment_pointer(4);
             }
             OC::RelativeBaseOffset => {
@@ -399,9 +399,8 @@ impl VM {
                 Opcode 9 adjusts the relative base by the value of its only parameter.
                 The relative base increases (or decreases, if the value is negative) by the value of the parameter.
                  */
-                let parameter = self.get_memory(self.pointer + 1);
-                debug_println!("{:?}: parameter: {:?}", &opcode, parameter);
-                let offset_increment = self.get_param_value(&opcode.first_param_mode, &parameter);
+                let offset_increment = self.get_param(1);
+                debug_println!("{:?}, Incrementing offset by {offset_increment}", &opcode);
                 self.increment_relative_offset(offset_increment);
                 self.increment_pointer(2);
             }
@@ -468,9 +467,9 @@ mod tests {
     }
 
     #[rstest]
-    #[case(vec![11107, 1, 2, 4, 50, 99], 1)]
+    #[case(vec![1107, 1, 2, 4, 50, 99], 1)]
     #[case(vec![7, 1, 2, 4, 4, 99], 1)]
-    #[case(vec![11107, 2, 1, 4, 50, 99], 0)]
+    #[case(vec![1107, 2, 1, 4, 50, 99], 0)]
     #[case(vec![7, 2, 2, 4, 4, 99], 0)]
     fn test_op_seven(#[case] input: Vec<isize>, #[case] expected: isize) {
         // seven = LessThan. If first param less than second, store 1 in position from third
@@ -480,9 +479,9 @@ mod tests {
     }
 
     #[rstest]
-    #[case(vec![11108, 1, 2, 4, 50, 99], 0)]
+    #[case(vec![1108, 1, 2, 4, 50, 99], 0)]
     #[case(vec![8, 1, 2, 4, 4, 99], 0)]
-    #[case(vec![11108, 2, 2, 4, 50, 99], 1)]
+    #[case(vec![1108, 2, 2, 4, 50, 99], 1)]
     #[case(vec![8, 2, 2, 4, 4, 99], 1)]
     fn test_op_eight(#[case] input: Vec<isize>, #[case] expected: isize) {
         // eight = equals. If first param = second, store 1 in position from third
@@ -605,7 +604,7 @@ mod tests {
         ];
         let mut vm = VM::new(input.clone());
         vm.run();
-        assert_eq!(vec![1], input);
+        assert_eq!(vm.output, input);
     }
 
     #[test]

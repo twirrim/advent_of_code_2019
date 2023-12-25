@@ -15,9 +15,12 @@ use crate::debug_println;
 
 use num_traits::int::PrimInt;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Opcode {
-    opcode: OC,
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+enum VMState {
+    Initialised,
+    Running,
+    WaitingForInput,
+    Finished,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -55,7 +58,7 @@ fn decode_opcode<T: PrimInt + Display>(input: T) -> OC {
 pub struct VM {
     memory: Vec<isize>,
     pointer: usize,
-    finished: bool,
+    state: VMState,
     relative_base: isize,
     input: Vec<isize>,
     output: Vec<isize>, // getting uncomfortable with this.. feels like something subject to major change later
@@ -75,7 +78,7 @@ impl VM {
         VM {
             memory,
             pointer: 0,
-            finished: false,
+            state: VMState::Initialised,
             relative_base: 0,
             input: vec![],
             output: vec![],
@@ -83,10 +86,16 @@ impl VM {
     }
 
     pub fn run(&mut self) {
-        while self.pointer < self.memory.len() && !self.finished {
+        self.state = VMState::Running;
+        while self.pointer < self.memory.len() && self.state != VMState::Finished {
             debug_println!("{:?}", self.memory);
             self.step();
         }
+    }
+
+    fn set_state(&mut self, state: VMState) {
+        debug_println!("Setting VM state to {:?}", state);
+        self.state = state;
     }
 
     pub fn increment_relative_offset<T: PrimInt + Display>(&mut self, input: T) {
@@ -100,9 +109,14 @@ impl VM {
     }
 
     pub fn pop_input(&mut self) -> isize {
-        let output = self.input.pop().unwrap();
-        debug_println!("Got {output} from the input queue");
-        output
+        self.set_state(VMState::WaitingForInput);
+        loop {
+            while let Some(output) = self.input.pop() {
+                self.set_state(VMState::Running);
+                debug_println!("Got {output} from the input queue");
+                return output;
+            }
+        }
     }
 
     pub fn pop_output(&mut self) -> Option<isize> {
@@ -118,7 +132,6 @@ impl VM {
 
     // I'm going to draw from https://www.reddit.com/r/adventofcode/comments/e8aw9j/2019_day_9_part_1_how_to_fix_203_error/faajho3/
     // I've messed up something here and I like the way that approach shapes the code.
-    // This will help me clean up and likely remove the Opcode Enum, or re-think it entirely.
     fn get_param<T: PrimInt + Display>(&mut self, parameter_number: T) -> isize {
         debug_println!("Getting from {parameter_number}");
         let mode =
@@ -229,7 +242,7 @@ impl VM {
             }
             OC::End => {
                 debug_println!("{:?}. Ending program", opcode);
-                self.finished = true;
+                self.state = VMState::Finished;
             }
             OC::Input => {
                 /*
@@ -352,9 +365,9 @@ mod tests {
         // Attempts to prove op code 99 functions correctly
         // if 99 isn't executed correctly, machine won't be in finished state, even if it stops running
         let mut test_vm = VM::new(vec![99]);
-        assert_eq!(test_vm.finished, false);
+        assert_eq!(test_vm.state, VMState::Initialised);
         test_vm.run();
-        assert_eq!(test_vm.finished, true);
+        assert_eq!(test_vm.state, VMState::Finished);
     }
 
     #[test]
@@ -560,12 +573,19 @@ mod tests {
         assert_eq!(output, 1125899906842624);
     }
 
-    #[test]
-    fn test_opcode_creation() {
-        let mut test_cases = vec![(1002, OC::Mul)];
-        for test_case in test_cases.iter_mut() {
-            let opcode = decode_opcode(test_case.0);
-            assert_eq!(opcode, test_case.1);
-        }
+    #[rstest]
+    #[case(1001, OC::Add)]
+    #[case(1002, OC::Mul)]
+    #[case(1003, OC::Input)]
+    #[case(1004, OC::Output)]
+    #[case(1005, OC::JumpIfTrue)]
+    #[case(1006, OC::JumpIfFalse)]
+    #[case(1007, OC::LessThan)]
+    #[case(1008, OC::Equals)]
+    #[case(1009, OC::RelativeBaseOffset)]
+    #[case(1099, OC::End)]
+    fn test_opcode_creation(#[case] test_case: isize, #[case] expected: OC) {
+        let opcode = decode_opcode(test_case);
+        assert_eq!(opcode, expected);
     }
 }

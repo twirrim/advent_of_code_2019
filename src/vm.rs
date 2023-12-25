@@ -216,10 +216,10 @@ impl VM {
                 positions from which you should read the input values, and the third
                 indicates the position at which the output should be stored.
                  */
-
+                debug_println!("{:?}", &opcode);
                 let a = self.get_param(1);
                 let b = self.get_param(2);
-                debug_println!("{:?}: {a} + {b}", &opcode);
+                debug_println!("{a} + {b}");
                 self.set_param(3, a + b);
                 self.increment_pointer(4);
             }
@@ -229,6 +229,7 @@ impl VM {
                 inputs instead of adding them. Again, the three integers after the
                 opcode indicate where the inputs and outputs are, not their values.
                  */
+                debug_println!("{:?}", &opcode);
                 let a = self.get_param(1);
                 let b = self.get_param(2);
                 debug_println!("{:?}: {a} * {b}", &opcode);
@@ -245,7 +246,7 @@ impl VM {
                 by its only parameter. For example, the instruction 3,50 would take an input
                 value and store it at address 50.
                 */
-
+                debug_println!("{:?}", &opcode);
                 let input = self.pop_input();
                 debug_println!("{:?}, Got input {input}", opcode);
                 self.set_param(1, input);
@@ -256,6 +257,7 @@ impl VM {
                 Opcode 4 outputs the value of its only parameter. For example, the
                 instruction 4,50 would output the value at address 50.
                 */
+                debug_println!("{:?}", &opcode);
                 let output = self.get_param(1);
                 debug_println!("{:?}: output: {:?}", &opcode, output);
                 self.push_output(output);
@@ -268,9 +270,8 @@ impl VM {
                 sets the instruction pointer to the value from the second parameter.
                 Otherwise, it does nothing.
                 */
-                let a = self.get_param(1);
                 debug_println!("{:?}", &opcode);
-
+                let a = self.get_param(1);
                 if a != 0 {
                     let target = self.get_param(2);
                     debug_println!("{a} != 0, jumping to {target}");
@@ -285,9 +286,8 @@ impl VM {
                 Opcode 6 is jump-if-false: if the first parameter is zero, it sets the
                 instruction pointer to the value from the second parameter. Otherwise, it does nothing.
                 */
-
-                let a = self.get_param(1);
                 debug_println!("{:?}", &opcode);
+                let a = self.get_param(1);
 
                 if a == 0 {
                     let target = self.get_param(2);
@@ -303,10 +303,10 @@ impl VM {
                 Opcode 7 is less than: if the first parameter is less than the second parameter,
                 it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
                 */
-
+                debug_println!("{:?}", &opcode);
                 let a = self.get_param(1);
                 let b = self.get_param(2);
-                debug_println!("{:?}: {a} < {b} ?", &opcode);
+                debug_println!("{a} < {b} ?");
 
                 if a < b {
                     debug_println!("Yes!");
@@ -322,10 +322,10 @@ impl VM {
                  Opcode 8 is equals: if the first parameter is equal to the second parameter,
                  it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
                 */
-
+                debug_println!("{:?}", &opcode);
                 let a = self.get_param(1);
                 let b = self.get_param(2);
-                debug_println!("{:?}: {a} == {b} ?", &opcode);
+                debug_println!("{a} == {b} ?");
                 if a == b {
                     debug_println!("Yes!");
                     self.set_param(3, 1);
@@ -340,9 +340,11 @@ impl VM {
                 Opcode 9 adjusts the relative base by the value of its only parameter.
                 The relative base increases (or decreases, if the value is negative) by the value of the parameter.
                  */
+                debug_println!("{:?}", &opcode);
                 let offset_increment = self.get_param(1);
-                debug_println!("{:?}, Incrementing offset by {offset_increment}", &opcode);
+                debug_println!("Incrementing offset by {offset_increment}");
                 self.increment_relative_offset(offset_increment);
+                debug_println!("Current offset {}", self.relative_base);
                 self.increment_pointer(2);
             }
         }

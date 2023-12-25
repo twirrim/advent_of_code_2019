@@ -9,7 +9,7 @@ I imagine in the real world, that could be a major problem.  For AoC I imagine i
 
 */
 
-use std::{fmt::Display, ops::RangeInclusive};
+use std::fmt::Display;
 
 use crate::debug_println;
 
@@ -68,6 +68,9 @@ impl VM {
         // The computer's available memory should be much larger than the initial program.
         // Memory beyond the initial program starts with the value 0 and can be read or written like any other memory.
         // (It is invalid to try to access memory at a negative address, though.)
+
+        // In python I used a defaultdict, a hashmap with a default value.
+        // Trade off is memory consumption vs cost of hashing.
 
         VM {
             memory,
@@ -179,18 +182,6 @@ impl VM {
         let value = self.memory[target].clone();
         // debug_println!("Got value: {value}");
         value
-    }
-
-    pub fn get_memory_range(&mut self, address: RangeInclusive<usize>) -> Vec<isize> {
-        if address.end() > &(self.memory.len() - 1) {
-            debug_println!("Expanding memory to {}", address.end());
-            self.memory.resize(*address.end(), 0);
-        }
-
-        debug_println!("Getting memory range {:?}", address);
-        let values = &self.memory[address];
-        debug_println!("Got value: {:?}", values);
-        values.to_vec()
     }
 
     fn set_pointer<T: PrimInt + Display>(&mut self, value: T) {

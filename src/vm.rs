@@ -87,10 +87,21 @@ impl VM {
 
     pub fn run(&mut self) {
         self.state = VMState::Running;
-        while self.pointer < self.memory.len() && self.state != VMState::Finished {
+        while self.pointer < self.memory.len()
+            && self.state != VMState::Finished
+            && self.state != VMState::WaitingForInput
+        {
             debug_println!("{:?}", self.memory);
             self.step();
         }
+    }
+
+    pub fn finished(&self) -> bool {
+        self.state == VMState::Finished
+    }
+
+    pub fn needs_input(&self) -> bool {
+        self.state == VMState::WaitingForInput
     }
 
     fn set_state(&mut self, state: VMState) {
@@ -108,14 +119,10 @@ impl VM {
         self.input.push(input.to_isize().unwrap());
     }
 
-    pub fn pop_input(&mut self) -> isize {
-        self.set_state(VMState::WaitingForInput);
-        loop {
-            while let Some(output) = self.input.pop() {
-                self.set_state(VMState::Running);
-                debug_println!("Got {output} from the input queue");
-                return output;
-            }
+    pub fn pop_input(&mut self) -> Result<isize, &'static str> {
+        match self.input.pop() {
+            Some(x) => Ok(x),
+            None => Err("No input found"),
         }
     }
 
@@ -191,9 +198,7 @@ impl VM {
             debug_println!("Expanding memory to {target}");
             self.memory.resize(target + 1, 0);
         }
-        // debug_println!("Getting from memory at {target}");
         let value = self.memory[target].clone();
-        // debug_println!("Got value: {value}");
         value
     }
 
@@ -251,10 +256,13 @@ impl VM {
                 value and store it at address 50.
                 */
                 debug_println!("{:?}", &opcode);
-                let input = self.pop_input();
-                debug_println!("{:?}, Got input {input}", opcode);
-                self.set_param(1, input);
-                self.increment_pointer(2);
+                if let Ok(input) = self.pop_input() {
+                    debug_println!("{:?}, Got input {input}", opcode);
+                    self.set_param(1, input);
+                    self.increment_pointer(2);
+                } else {
+                    self.set_state(VMState::WaitingForInput);
+                }
             }
             OC::Output => {
                 /*

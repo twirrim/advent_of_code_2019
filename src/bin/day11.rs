@@ -1,6 +1,8 @@
+use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::ops::AddAssign;
 
+use image::{imageops, GenericImageView, ImageBuffer, RgbImage};
 use log::info;
 use simple_logger::SimpleLogger;
 
@@ -120,8 +122,11 @@ fn part_one(program: &[isize]) {
     // Using a HashSet, every time we paint, we'll add to the HashSet, as that'll dedupe.
     // Final answer will be HashSet length.
     let mut vm = VM::new(program.to_owned());
-    let mut map: HashMap<Point, isize> = HashMap::new();
     let mut robot = PaintRobot::new();
+
+    // Starting location is white
+    let mut map: HashMap<Point, isize> = HashMap::from([(robot.location.clone(), 0)]);
+
     // Running the VM should see it end at a WaitingForInput state, which we can then build the loop around
     vm.run();
     while vm.needs_input() {
@@ -162,6 +167,89 @@ fn part_one(program: &[isize]) {
     info!("{:?}", map.len());
 }
 
+fn part_two(program: &[isize]) {
+    /*
+    Based on the Space Law Space Brochure that the Space Police attached to one of your windows,
+    a valid registration identifier is always eight capital letters. After starting the robot on
+    a single white panel instead, what registration identifier does it paint on your hull?
+    */
+    let mut vm = VM::new(program.to_owned());
+    let mut robot = PaintRobot::new();
+    // Starting location is white
+    let mut map: HashMap<Point, isize> = HashMap::from([(robot.location.clone(), 1)]);
+    // Running the VM should see it end at a WaitingForInput state, which we can then build the loop around
+    vm.run();
+    while vm.needs_input() {
+        let current_colour: isize = match map.get(&robot.location) {
+            Some(colour) => *colour,
+            None => {
+                map.insert(robot.location.clone(), 0);
+                0
+            } // Default to black
+        };
+
+        debug_println!("Pushing to Input: {current_colour}");
+        vm.push_input(current_colour);
+
+        // Then run, and it should give me two outputs
+        vm.run();
+
+        // First we paint (for part 1, really doesn't matter what)
+        if let Some(wanted_colour) = vm.pop_front_output() {
+            *map.entry(robot.location.clone()).or_insert(wanted_colour) = wanted_colour;
+        } else {
+            panic!("Didn't get a paint output!")
+        }
+
+        // Then we turn
+        if let Some(turn) = vm.pop_front_output() {
+            robot.turn(turn);
+        } else {
+            panic!("Didn't get turn output!")
+        }
+
+        // Then we move
+        robot.move_robot();
+
+        // Then we run the robot, which should take us back to the start of the loop
+        vm.run();
+    }
+    // Find the smallest values, so we can offset everything for printing
+    let mut min_x = 0;
+    let mut min_y = 0;
+    let mut max_x = 0;
+    let mut max_y = 0;
+    for key in map.keys() {
+        min_x = min(min_x, key.x);
+        min_y = min(min_y, key.y);
+        max_x = max(max_x, key.x);
+        max_y = max(max_y, key.y);
+    }
+    let offset_x = 0 - min_x;
+    let offset_y = 0 - min_y;
+
+    // Make an RGB buffer with dimensions reflecting map
+    let mut img: RgbImage =
+        ImageBuffer::new((max_x + offset_x + 1) as u32, (max_y + offset_y + 1) as u32);
+
+    // Make everything black
+    for (x, y, pixel) in img.enumerate_pixels_mut() {
+        *pixel = image::Rgb([0, 0, 0]);
+    }
+
+    for (key, val) in map.iter() {
+        let pixel = img.get_pixel_mut((key.x + offset_x) as u32, (key.y + offset_y) as u32);
+        match val {
+            0 => *pixel = image::Rgb([0, 0, 0]),
+            1 => *pixel = image::Rgb([255, 255, 255]),
+            _ => panic!("What? {val}"),
+        }
+    }
+
+    info!("Saving image");
+    img.save("part_two.png").unwrap();
+}
+
 fn main() {
     let start = std::time::Instant::now();
     SimpleLogger::new().env().init().unwrap();
@@ -177,9 +265,9 @@ fn main() {
     part_one(&input);
     info!("Part one took: {:?}", part_one_start.elapsed());
 
-    // let part_two_start = std::time::Instant::now();
-    // part_two(&input);
-    // info!("Part two took: {:?}", part_two_start.elapsed());
+    let part_two_start = std::time::Instant::now();
+    part_two(&input);
+    info!("Part two took: {:?}", part_two_start.elapsed());
 
     info!("Overall time take: {:?}", start.elapsed());
 }

@@ -11,6 +11,7 @@ lto = "thin"
 debug = true
 
 [dependencies]
+image = { version="0.24.7", features = ["png"] }
 log = "0.4"
 num-traits = "0.2"
 simple_logger = "4.3"

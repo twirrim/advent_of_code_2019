@@ -2,7 +2,7 @@ use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::ops::AddAssign;
 
-use image::{imageops, GenericImageView, ImageBuffer, RgbImage};
+use image::{imageops, ImageBuffer, RgbImage};
 use log::info;
 use simple_logger::SimpleLogger;
 
@@ -233,7 +233,7 @@ fn part_two(program: &[isize]) {
         ImageBuffer::new((max_x + offset_x + 1) as u32, (max_y + offset_y + 1) as u32);
 
     // Make everything black
-    for (x, y, pixel) in img.enumerate_pixels_mut() {
+    for pixel in img.pixels_mut() {
         *pixel = image::Rgb([0, 0, 0]);
     }
 
@@ -246,8 +246,9 @@ fn part_two(program: &[isize]) {
         }
     }
 
+    let flipped_img = imageops::flip_vertical(&img);
     info!("Saving image");
-    img.save("part_two.png").unwrap();
+    flipped_img.save("part_two.png").unwrap();
 }
 
 fn main() {

@@ -5,9 +5,9 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [profile.release]
-overflow-checks = true
+# overflow-checks = true
 codegen-units = 1
-lto = "thin"
+lto = true
 debug = true
 
 [dependencies]

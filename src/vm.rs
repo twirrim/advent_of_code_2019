@@ -9,6 +9,7 @@ I imagine in the real world, that could be a major problem.  For AoC I imagine i
 
 */
 
+use std::collections::VecDeque;
 use std::fmt::Display;
 
 use crate::debug_println;
@@ -61,7 +62,7 @@ pub struct VM {
     state: VMState,
     relative_base: isize,
     input: Vec<isize>,
-    output: Vec<isize>, // getting uncomfortable with this.. feels like something subject to major change later
+    output: VecDeque<isize>, // getting uncomfortable with this.. feels like something subject to major change later
 }
 
 impl VM {
@@ -81,7 +82,7 @@ impl VM {
             state: VMState::Initialised,
             relative_base: 0,
             input: vec![],
-            output: vec![],
+            output: VecDeque::default(),
         }
     }
 
@@ -127,14 +128,20 @@ impl VM {
     }
 
     pub fn pop_output(&mut self) -> Option<isize> {
-        let output = self.output.pop();
+        let output = self.output.pop_back();
+        debug_println!("Got {:?} from output", output);
+        output
+    }
+
+    pub fn pop_front_output(&mut self) -> Option<isize> {
+        let output = self.output.pop_front();
         debug_println!("Got {:?} from output", output);
         output
     }
 
     pub fn push_output(&mut self, value: isize) {
         debug_println!("Pushing {value} to output");
-        self.output.push(value);
+        self.output.push_back(value);
     }
 
     // I'm going to draw from https://www.reddit.com/r/adventofcode/comments/e8aw9j/2019_day_9_part_1_how_to_fix_203_error/faajho3/
@@ -198,8 +205,8 @@ impl VM {
             debug_println!("Expanding memory to {target}");
             self.memory.resize(target + 1, 0);
         }
-        let value = self.memory[target].clone();
-        value
+
+        self.memory[target]
     }
 
     fn set_pointer<T: PrimInt + Display>(&mut self, value: T) {

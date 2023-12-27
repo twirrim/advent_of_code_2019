@@ -164,6 +164,7 @@ fn part_one(program: &[isize]) {
         // Then we run the robot, which should take us back to the start of the loop
         vm.run();
     }
+    make_image_from_map(&map, "part_one.png");
     info!("{:?}", map.len());
 }
 
@@ -214,7 +215,10 @@ fn part_two(program: &[isize]) {
         // Then we run the robot, which should take us back to the start of the loop
         vm.run();
     }
-    // Find the smallest values, so we can offset everything for printing
+    make_image_from_map(&map, "part_two.png");
+}
+
+fn make_image_from_map(map: &HashMap<Point, isize>, name: &str) {
     let mut min_x = 0;
     let mut min_y = 0;
     let mut max_x = 0;
@@ -247,8 +251,15 @@ fn part_two(program: &[isize]) {
     }
 
     let flipped_img = imageops::flip_vertical(&img);
-    info!("Saving image");
-    flipped_img.save("part_two.png").unwrap();
+    // Scale image
+    let scaled_flipped_img = imageops::resize(
+        &flipped_img,
+        ((max_x + offset_x + 1) * 8) as u32,
+        ((max_y + offset_y + 1) * 8) as u32,
+        imageops::FilterType::Nearest,
+    );
+    info!("Saving image {name}");
+    scaled_flipped_img.save(name).unwrap();
 }
 
 fn main() {

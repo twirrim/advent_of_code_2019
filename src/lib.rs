@@ -1,6 +1,10 @@
+use std::fmt::Display;
 use std::fs;
 use std::io;
 use std::io::prelude::*;
+use std::ops::AddAssign;
+
+use num_traits::int::PrimInt;
 
 pub mod vm;
 
@@ -39,4 +43,19 @@ pub fn get_user_input(query: &str) -> String {
     println!("{query}");
     io::stdin().read_line(&mut input).unwrap();
     input
+}
+
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+pub struct Point<T: PrimInt + Display> {
+    pub x: T,
+    pub y: T,
+}
+
+impl<T: PrimInt + Display> AddAssign for Point<T> {
+    fn add_assign(&mut self, other: Self) {
+        *self = Self {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        };
+    }
 }

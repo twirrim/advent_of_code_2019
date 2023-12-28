@@ -1,13 +1,12 @@
 use std::cmp::{max, min};
 use std::collections::HashMap;
-use std::ops::AddAssign;
 
 use image::{imageops, ImageBuffer, RgbImage};
 use log::info;
 use simple_logger::SimpleLogger;
 
 use advent_of_code_2019::vm::VM;
-use advent_of_code_2019::{debug_println, read_file};
+use advent_of_code_2019::{debug_println, read_file, Point};
 
 /*
  For this puzzle, need to "paint" an ID on the hull.  The hull is a 2D grid.
@@ -19,24 +18,6 @@ use advent_of_code_2019::{debug_println, read_file};
  ** Second is what way to turn 90 degrees (0 left, 1 right)
  * Move forwards one cell
 */
-
-// isize because I'm going to start from the centre, (0, 0)
-// have no clue where I'll end up.
-// Odds of this overflowing isize are slim!
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
-struct Point {
-    x: isize,
-    y: isize,
-}
-
-impl AddAssign for Point {
-    fn add_assign(&mut self, other: Self) {
-        *self = Self {
-            x: self.x + other.x,
-            y: self.y + other.y,
-        };
-    }
-}
 
 #[derive(Debug, PartialEq, Eq)]
 enum Direction {
@@ -68,7 +49,7 @@ impl Direction {
 
 // Paint Robot?  Paint Robot!
 struct PaintRobot {
-    location: Point,
+    location: Point<isize>,
     heading: Direction,
 }
 
@@ -125,7 +106,7 @@ fn part_one(program: &[isize]) {
     let mut robot = PaintRobot::new();
 
     // Starting location is white
-    let mut map: HashMap<Point, isize> = HashMap::from([(robot.location.clone(), 0)]);
+    let mut map: HashMap<Point<isize>, isize> = HashMap::from([(robot.location.clone(), 0)]);
 
     // Running the VM should see it end at a WaitingForInput state, which we can then build the loop around
     vm.run();
@@ -177,7 +158,7 @@ fn part_two(program: &[isize]) {
     let mut vm = VM::new(program.to_owned());
     let mut robot = PaintRobot::new();
     // Starting location is white
-    let mut map: HashMap<Point, isize> = HashMap::from([(robot.location.clone(), 1)]);
+    let mut map: HashMap<Point<isize>, isize> = HashMap::from([(robot.location.clone(), 1)]);
     // Running the VM should see it end at a WaitingForInput state, which we can then build the loop around
     vm.run();
     while vm.needs_input() {
@@ -218,7 +199,7 @@ fn part_two(program: &[isize]) {
     make_image_from_map(&map, "part_two.png");
 }
 
-fn make_image_from_map(map: &HashMap<Point, isize>, name: &str) {
+fn make_image_from_map(map: &HashMap<Point<isize>, isize>, name: &str) {
     let mut min_x = 0;
     let mut min_y = 0;
     let mut max_x = 0;
@@ -316,7 +297,7 @@ mod test {
     fn turn_left_and_move(
         #[case] start_heading: Direction,
         #[case] expected_heading: Direction,
-        #[case] expected_location: Point,
+        #[case] expected_location: Point<isize>,
     ) {
         let mut robot = PaintRobot::new();
         robot.heading = start_heading;
@@ -334,7 +315,7 @@ mod test {
     fn turn_right_and_move(
         #[case] start_heading: Direction,
         #[case] expected_heading: Direction,
-        #[case] expected_location: Point,
+        #[case] expected_location: Point<isize>,
     ) {
         let mut robot = PaintRobot::new();
         robot.heading = start_heading;

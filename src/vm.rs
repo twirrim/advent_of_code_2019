@@ -105,6 +105,10 @@ impl VM {
         self.state == VMState::WaitingForInput
     }
 
+    pub fn has_output(&self) -> bool {
+        self.output.len() > 0
+    }
+
     fn set_state(&mut self, state: VMState) {
         debug_println!("Setting VM state to {:?}", state);
         self.state = state;

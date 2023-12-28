@@ -59,3 +59,31 @@ impl<T: PrimInt + Display> AddAssign for Point<T> {
         };
     }
 }
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Direction {
+    North,
+    South,
+    East,
+    West,
+}
+
+impl Direction {
+    pub fn turn_left(&self) -> Direction {
+        match &self {
+            Direction::North => Direction::West,
+            Direction::South => Direction::East,
+            Direction::East => Direction::North,
+            Direction::West => Direction::South,
+        }
+    }
+
+    pub fn turn_right(&self) -> Direction {
+        match &self {
+            Direction::North => Direction::East,
+            Direction::South => Direction::West,
+            Direction::East => Direction::South,
+            Direction::West => Direction::North,
+        }
+    }
+}

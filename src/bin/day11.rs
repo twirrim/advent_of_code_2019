@@ -6,7 +6,7 @@ use log::info;
 use simple_logger::SimpleLogger;
 
 use advent_of_code_2019::vm::VM;
-use advent_of_code_2019::{debug_println, read_file, Point};
+use advent_of_code_2019::{debug_println, read_file, Direction, Point};
 
 /*
  For this puzzle, need to "paint" an ID on the hull.  The hull is a 2D grid.
@@ -18,34 +18,6 @@ use advent_of_code_2019::{debug_println, read_file, Point};
  ** Second is what way to turn 90 degrees (0 left, 1 right)
  * Move forwards one cell
 */
-
-#[derive(Debug, PartialEq, Eq)]
-enum Direction {
-    North,
-    South,
-    East,
-    West,
-}
-
-impl Direction {
-    fn turn_left(&self) -> Direction {
-        match &self {
-            Direction::North => Direction::West,
-            Direction::South => Direction::East,
-            Direction::East => Direction::North,
-            Direction::West => Direction::South,
-        }
-    }
-
-    fn turn_right(&self) -> Direction {
-        match &self {
-            Direction::North => Direction::East,
-            Direction::South => Direction::West,
-            Direction::East => Direction::South,
-            Direction::West => Direction::North,
-        }
-    }
-}
 
 // Paint Robot?  Paint Robot!
 struct PaintRobot {
@@ -145,7 +117,7 @@ fn part_one(program: &[isize]) {
         // Then we run the robot, which should take us back to the start of the loop
         vm.run();
     }
-    make_image_from_map(&map, "part_one.png");
+    make_image_from_map(&map, "day_11_part_one.png");
     info!("{:?}", map.len());
 }
 
@@ -196,7 +168,7 @@ fn part_two(program: &[isize]) {
         // Then we run the robot, which should take us back to the start of the loop
         vm.run();
     }
-    make_image_from_map(&map, "part_two.png");
+    make_image_from_map(&map, "day_11_part_two.png");
 }
 
 fn make_image_from_map(map: &HashMap<Point<isize>, isize>, name: &str) {
